@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.program.totalinstaller" version="1.0.1" name="totalXBMC Installer" provider-name="Blazetamer, totalxbmc.tv">
+<requires>
+<import addon="xbmc.python" version="2.1.0"/>
+</requires>
+<extension point="xbmc.python.pluginsource" library="default.py">
+<provides>executable</provides>
+</extension>
+<extension point="xbmc.addon.metadata">
+<summary>totalXBMC Addon Installer</summary>
+	<description>Every XBMC addon available. No prejudice against any sites or developers - this is a collection of EVERY XBMC Addon available with over 2,000 so far!</description>
+		<website>http://www.totalxbmc.tv</website>
+<platform>all</platform>
+</extension>
+  <extension point="xbmc.addon.repository"
+              name="Total Installer Repository">
+    <info compressed="false">https://github.com/totalxbmc/totalinstaller/raw/master/addons.xml</info>
+    <checksum>https://github.com/totalxbmc/totalinstaller/raw/master/addons.xml.md5</checksum>
+    <datadir zip="true">https://raw.github.com/totalxbmc/totalinstaller/master/zips/</datadir>
+  </extension>
+</addon>
+</addons>
