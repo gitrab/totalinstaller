@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="repository.totalinstaller" version="1.0.1" name="Total Installer Repo" provider-name="Blazetamer, totalxbmc.tv">
+<addon id="repository.totalinstaller" version="1.0.1" name="Total Installer Repo" provider-name="totalxbmc.tv">
 	<extension point="xbmc.addon.repository" name="Total Installer Repo">
 		<info compressed="false">https://github.com/totalxbmc/totalinstaller/raw/master/zips/addons.xml</info>
 		<checksum>https://github.com/totalxbmc/totalinstaller/raw/master/zips/addons.xml.md5</checksum>
