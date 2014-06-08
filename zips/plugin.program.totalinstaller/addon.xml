@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.program.totalinstaller" version="1.0.4.1" name="Total Installer" provider-name="totalxbmc.tv, blazetamer">
+<addon id="plugin.program.totalinstaller" version="1.0.4.2" name="Total Installer" provider-name="totalxbmc.tv, blazetamer">
 <requires>
 <import addon="xbmc.python" version="2.1.0"/>
 </requires>
@@ -8,7 +8,7 @@
 </extension>
 <extension point="xbmc.addon.metadata">
 <summary>Total Installer</summary>
-	<description>Every XBMC addon available. No prejudice against any sites or developers - this is a collection of EVERY XBMC Addon available with over 2,000 so far!</description>
+	<description>Every XBMC addon available. No prejudice against any sites or developers - this is a collection of EVERY XBMC Addon available with over 2,000 so far! BIG thanks go to blazetamer for creating the original Addon Installer that was used as a base for this new installer.</description>
 		<website>http://www.totalxbmc.tv</website>
 <platform>all</platform>
 </extension>
