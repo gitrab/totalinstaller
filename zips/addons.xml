@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addons>
-<addon id="plugin.program.totalinstaller" version="1.0.5" name="Total Installer" provider-name="totalxbmc.tv, blazetamer">
+<addon id="plugin.program.totalinstaller" version="1.0.6" name="Total Installer" provider-name="spoyser, whufclee, blazetamer (original code)">
 <requires>
 <import addon="xbmc.python" version="2.1.0"/>
 </requires>
