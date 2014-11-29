@@ -15,7 +15,7 @@
 </extension>
 </addon>
 
-<addon id="repository.totalinstaller" version="1.0.1" name="Total Installer Repo" provider-name="totalxbmc.tv">
+<addon id="repository.totalinstaller" version="1.0.2" name=" [COLOR lime][B]T[/B][/COLOR][COLOR white]otal[/COLOR][COLOR lime][B]R[/B][/COLOR][COLOR white]evolution[/COLOR]" provider-name="totalxbmc.tv">
 	<extension point="xbmc.addon.repository" name="Total Installer Repo">
 		<info compressed="false">https://github.com/totalxbmc/totalinstaller/raw/master/zips/addons.xml</info>
 		<checksum>https://github.com/totalxbmc/totalinstaller/raw/master/zips/addons.xml.md5</checksum>
@@ -23,8 +23,32 @@
 	</extension>
 	<extension point="xbmc.addon.metadata">
 		<summary>Total Installer</summary>
-		<description>Every XBMC addon available. No prejudice against any sites or developers - this is a collection of EVERY XBMC Addon available with over 2,000 so far!</description>
+		<description>[COLOR blue]Join the Revolution[/COLOR] @ [COLOR lime][B]www.totalxbmc.tv[/B][/COLOR][CR][CR]Total Revolution is the home of Total Installer and the project is designed to get the great XBMC/Kodi community together as one. Have your say on what goes on and help design your very own skin.</description>
 		<platform>all</platform>
 	</extension>
+</addon>
+
+<addon
+  id="skin.total.revolution"
+  version="0.2.4"
+  name="Total Revolution"
+  provider-name="Jezz_X, Team XBMC, whufclee">
+  <requires>
+    <import addon="xbmc.gui" version="5.0.0"/>
+    <import addon="script.globalsearch" version="2.0.8"/>
+    <import addon="plugin.program.totalinstaller" version="1.0.6"/>
+  </requires>
+  <extension
+    point="xbmc.gui.skin"
+    defaultthemename="textures.xbt"
+    debugging="false"
+    effectslowdown="0.75">
+    <res width="1280" height="720" aspect="16:9" default="true" folder="720p" />
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <summary>A mod on the original Confluence by Jezz_X</summary>
+    <description>Total Revolution is a skin designed for absolute ease of use and to serve as a base for community development. Full integration is the key, with some features never seen integrated into a skin before - this also has the ability to integrate android apps into XBMC/Kodi. Whilst this was originally designed with Android in mind it has grown and is fully functional on all other platforms and whilst making a fully customisable skin we aim to keep it as low on resources as possible.</description>
+    <platform>all</platform>
+  </extension>
 </addon>
 </addons>
