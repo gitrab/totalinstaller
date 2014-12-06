@@ -16,5 +16,5 @@ def _pbhook(numblocks, blocksize, filesize, url, dp):
         percent = 100
         dp.update(percent)
     if dp.iscanceled(): 
-        raise Exception("Canceled")
+        raise Exception("Cancelled")
         dp.close()

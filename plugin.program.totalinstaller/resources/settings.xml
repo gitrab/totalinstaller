@@ -1,4 +1,10 @@
 <settings>
+<category label="General Settings">
+	<setting type="lsep" label="Log Uploader Email"/>
+    	<setting id="email" type="text" label="E-Mail Address"/>
+        <setting id="zip" type="folder"    label="Choose USB/SDCARD Destination"      default=""/>
+</category>
+		
 <category label="XBMC Categories">
 <setting id="categories" type="bool" label="Enable XBMC Categories Section" default="true"/>
 <setting id="audio" type="bool" label="Audio Section" default="true" enable="!eq(-1,false)"/>

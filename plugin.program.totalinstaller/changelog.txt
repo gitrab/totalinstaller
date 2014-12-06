@@ -1,3 +1,14 @@
+v1.0.6.1
+New additions:
+All the old options that were in the home menu are now in "Search for addons"
+There is better real live info available (for this to work we need you to post details when any addons break)
+Option to upload a log
+Option to install addon packs, you can create your own packs and submit on the forum - new section will be up soon.
+Option to backup your XBMC install, we will have an option to restore from within XBMC but still working out the little niggles in that.
+Option to make addons Gotham Compatible - this won't magically fix broken addons that don't work on any version of XBMC but it will mark older addons as Gotham compatible so you don't get the annoying message asking if you want to disable.
+Addon Fixes - currently the only one is the OnTapp.TV / OSS integration so no more having to fiddle with manually installing the local.ini
+Credits to the authors of the addons, yes I know it's one more popup to deal with but I feel the hardworking devs and relevant forums where they are supported should be recognised
+
 V1.0.5
 Changed the regex so it matches the new layout, now it doesn't
 matter if site is in development mode or not.
