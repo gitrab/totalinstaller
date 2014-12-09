@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addons>
+<addon id="plugin.program.community.builds" name="[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]" version="1.0.5" provider-name=".Mikey1234 (original code), whufclee">
+  <requires>
+    <import addon="xbmc.python" version="2.1.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="default.py">
+        <provides>executable</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en">TotalRevolution Community Builds</summary>
+    <description lang="en">Backup/restore your own build or install one of the many community builds available.[CR]Brought to you by [COLOR=lime][B]TotalXBMC[/COLOR][/B].[CR][CR]Thanks to Mikey1234 for the original code in the USB/SD Wizard addon.</description>
+    <platform>all</platform>
+  </extension>
+</addon>
+
 <addon id="plugin.program.totalinstaller" version="1.0.6.1" name="Total Installer" provider-name="spoyser, whufclee, blazetamer (original code)">
 <requires>
 <import addon="xbmc.python" version="2.1.0"/>

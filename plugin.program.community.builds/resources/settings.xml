@@ -1,0 +1,5 @@
+<settings>
+    <category label="Backup Folder">
+        <setting id="zip" type="folder"    label="Choose Backup Storage Location"      default=""/>
+    </category>
+</settings>
