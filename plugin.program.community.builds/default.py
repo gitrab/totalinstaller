@@ -9,7 +9,7 @@ import plugintools
 
 ADDON        =  xbmcaddon.Addon(id='plugin.program.community.builds')
 AddonID      =  'plugin.program.community.builds'
-AddonTitle   =  "TR Community Builds"
+AddonTitle   =  "[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]"
 zip          =  ADDON.getSetting('zip')
 dialog       =  xbmcgui.Dialog()
 dp           =  xbmcgui.DialogProgress()
@@ -25,13 +25,6 @@ KEYMAPS      =  xbmc.translatePath(os.path.join(USERDATA,'keymaps','keyboard.xml
 USB          =  xbmc.translatePath(os.path.join(zip))
 skin         =  xbmc.getSkinDir()
 
-
-if zip=='':
-    if dialog.yesno("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]", "You Have Not Set Your Storage Path", 'Set The Storage Path Now ?',''):
-        ADDON.openSettings()
-        print '######### ZIP DIRECTORY #########'
-        for filename in os.listdir(USB):
-            print filename
 
 #-----------------------------------------------------------------------------------------------------------------    
             
@@ -170,6 +163,7 @@ def OPEN_URL(url):
 
 def RESTORE_COMMUNITY(name,url,description):
     import time
+    myplatform = platform()
     dialog = xbmcgui.Dialog()
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
@@ -178,19 +172,20 @@ def RESTORE_COMMUNITY(name,url,description):
     if choice == 0:
         return
     elif choice == 1:
+        if myplatform != 'android':
+            choice2 = xbmcgui.Dialog().yesno(name, 'Would you like to merge your existing build', 'or wipe your existing data and have a fresh', 'install with this new build?', nolabel='Merge',yeslabel='Wipe')
+            if choice2 == 0: pass
+            elif choice2 == 1: WipeInstall()
 #        addonfolder = xbmc.translatePath(os.path.join('special://','home'))
         dp = xbmcgui.DialogProgress()
         dp.create("Community Builds","Downloading "+name +" build.",'', 'Please Wait')
-        lib=os.path.join(zip, name+'.zip')
-        try:
-            os.remove(lib)
-        except:
-            pass
+        lib=os.path.join(zip, 'community.zip')
+        try: os.remove(lib)
+        except: pass
         downloader.download(url, lib, dp)
         READ_ZIP(lib)
         dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
-        HOME = xbmc.translatePath(os.path.join('special://','home'))
-    
+        HOME = xbmc.translatePath(os.path.join('special://','home')) 
         dp.update(0,"", "Extracting Zip Please Wait")
         extract.all(lib,HOME,dp)
         time.sleep(1)
@@ -219,60 +214,74 @@ def RESTORE():
         
 # Kill Commands - these will make sure guisettings.xml sticks
 def killxbmc():
-    try:
-        os.system('@ECHO off')
-        os.system('TASKKILL /im XBMC.exe /f')
-    except:
-        pass
-    try:
-        os.system('killall -9 xbmc.bin')
-    except:
-        pass
-    try:
-        os.system('killall AppleTV')
-    except:
-        pass
-    try:
-        os.system('sudo initctl stop xbmc')
-    except:
-        pass
-    try:
-        os.system('adb shell ps | grep org.xbmc | awk ''{print $2}'' | xargs adb shell kill')
-    except:
-        pass
-    try:
-        os.system('@ECHO off')
-        os.system('TASKKILL /im kodi.exe /f')
-    except:
-        os.system('killall -9 kodi.bin')        
-    try:
-        os.system('sudo initctl stop kodi')
-    except:
-        pass
-    try:
-        os.system('adb killall org.xbmc.xbmc')
-    except:
-        pass
-    try:
-        os.system('adb killall org.xbmc')
-    except:
-        pass
-    try:
-        os.system('@ECHO off')
-        os.system('tskill XBMC.exe')
-    except:
-        pass
-    try:
-        os.system('killall XBMC')
-    except:
-        pass
-    try:
-        os.system('killall Kodi')
-    except:
-        pass
+    myplatform = platform()
+    print "Platform: " + str(myplatform)
+#OSX
+    if myplatform == 'osx':
+        print "############   try osx force close  #################"
+        try: os.system('killall -9 XBMC')
+        except: pass
+        try: os.system('killall -9 Kodi')
+        except: pass
+        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.",'')        
+#Linux
+    elif myplatform == 'linux':
+        print "############   try linux force close  #################"
+        try: os.system('killall XBMC')
+        except: pass
+        try: os.system('killall Kodi')
+        except: pass
+        try: os.system('killall -9 xbmc.bin')
+        except: pass
+        try: os.system('killall -9 Kodi.bin')
+        except: pass
+        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.",'')        
+# Android       
+    elif myplatform == 'android':
+        print "############   try android force close  #################"
+        try: os.system('adb shell am force-stop org.Kodi.Kodi')
+        except: pass
+        try: os.system('adb shell am force-stop org.Kodi')
+        except: pass
+        try: os.system('adb shell am force-stop org.xbmc.xbmc')
+        except: pass
+        try: os.system('adb shell am force-stop org.xbmc')
+        except: pass        
+        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.","Your system has been detected as Android, just pull the power cable.")
+# Windows
+    elif myplatform == 'windows':
+        print "############   try windows force close  #################"
+        try:
+            os.system('@ECHO off')
+            os.system('tskill XBMC.exe')
+        except: pass
+        try:
+            os.system('@ECHO off')
+            os.system('tskill Kodi.exe')
+        except: pass
+        try:
+            os.system('@ECHO off')
+            os.system('TASKKILL /im Kodi.exe /f')
+        except: pass
+        try:
+            os.system('@ECHO off')
+            os.system('TASKKILL /im XBMC.exe /f')
+        except: pass
+        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.","Your system has been detected as Windows so use ALT + F4.")
 
 # Possible alternative for older builds - windows tskill XBMC.exe
-
+#ATV
+    else:
+        print "############   try atv force close  #################"
+        try: os.system('killall AppleTV')
+        except: pass
+#OSMC / Raspbmc
+        print "############   try raspbmc force close  #################"
+        try: os.system('sudo initctl stop Kodi')
+        except: pass
+        try: os.system('sudo initctl stop xbmc')
+        except: pass
+        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.","Your platform could not be detected so just pull the power cable.")
         
 #---------------------------------------------------------------------------------------------------
     
@@ -285,11 +294,17 @@ def CATEGORIES():
     addDir('Wipe My Setup (Fresh Start)','url',9,'','','','Wipe your special XBMC/Kodi directory which will revert back to a vanillla build.')
 
 #---------------------------------------------------------------------------------------------------
+def PLAYVIDEO(url):
+    import yt    
+    yt.PlayVideo(url)
+    
+#---------------------------------------------------------------------------------------------------
 
 def INSTRUCTIONS(url):
-    addDir('[COLOR=dodgerblue][TEXT GUIDE] Creating A Community Backup[/COLOR]','url',14,'','','','')
-    addDir('More guides coming soon, stay tuned...','url',15,'','','','')
-#    addDir('[COLOR=dodgerblue][TEXT GUIDE] Restoring A Community Backup[/COLOR]','url',15,'','','','')
+    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] What Is Community Builds?','url',16,'','','','')
+    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Creating A Community Build','url',14,'','','','')
+    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Installing A Community Build','url',15,'','','','')
+#    addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] Create a Community Build (part 1)','url','PLAYVIDEO(https://www.youtube.com/watch?v=3rMScZF2h_U)','','','','')
 #    addDir('[COLOR=dodgerblue][TEXT GUIDE] Submitting A Community Backup[/COLOR]','url',16,'','','','')
 #    addDir('[COLOR=dodgerblue][TEXT GUIDE] Creating A Local Backup[/COLOR]','url',17,'','','','')
 #    addDir('[COLOR=dodgerblue][TEXT GUIDE] Restoring A Local Backup[/COLOR]','url',18,'','','','')
@@ -298,21 +313,28 @@ def INSTRUCTIONS(url):
 
 def Instructions_1():
     TextBoxes('Creating A Community Backup', '[COLOR=blue][B]Step 1: Backup your system[/B][/COLOR][CR]Choose the backup option from the main menu, you will be asked whether you would like to delete your addon_data folder. If you decide to choose this option [COLOR=yellow][B]make sure[/COLOR][/B] you already have a full backup of your system as it will completely wipe your addon settings (any stored settings such as passwords or any other changes you\'ve made to addons since they were first installed). If sharing a build with the community it\'s highly advised that you wipe your addon_data but if you\'ve made changes or installed extra data packages (e.g. skin artwork packs) then backup the whole build and then manually delete these on your PC and zip back up again (more on this later).'
-	'[CR][CR][COLOR=blue][B]Step 2: Edit zip file on your PC[/B][/COLOR][CR]Copy your backup.zip file to your PC, extract it and delete all the addons and addon_data that isn\'t required.'
+    '[CR][CR][COLOR=blue][B]Step 2: Edit zip file on your PC[/B][/COLOR][CR]Copy your backup.zip file to your PC, extract it and delete all the addons and addon_data that isn\'t required.'
     '[CR][COLOR=blue]What to delete:[/COLOR][CR][COLOR=lime]/addons/packages[/COLOR] This folder contains zip files of EVERY addon you\'ve ever installed - it\'s not needed.'
     '[CR][COLOR=lime]/addons/<skin.xxx>[/COLOR] Delete any skins that aren\'t used, these can be very big files.'
     '[CR][COLOR=lime]/addons/<addon_id>[/COLOR] Delete any other addons that aren\'t used, it\'s easy to forget you\'ve got things installed that are no longer needed.'
     '[CR][COLOR=lime]/userdata/addon_data/<addon_id>[/COLOR] Delete any folders that don\'t contain important changes to addons. If you delete these the associated addons will just reset to their default values.'
     '[CR][COLOR=lime]/userdata/<all other folders>[/COLOR] Delete all other folders in here such as keymaps. If you\'ve setup profiles make sure you [COLOR=yellow][B]keep the profiles directory[/COLOR][/B].'
-    '[CR][COLOR=lime]/addons/xbmc.log (or kodi.log)[/COLOR] Delete your log files, this includes any crashlog files you may have'
-	'[CR][CR][COLOR=blue]There will be more added to this guide as soon as I have some time to add to it![CR]In the meantime please visit the Community Builds forum at [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B] where full instructions along with video guides can be found.')
-	
+    '[CR][COLOR=lime]/userdata/Thumbnails/[/COLOR] Delete this folder, it contains all cached artwork. You can safely delete this but must also delete the file listed below.'
+    '[CR][COLOR=lime]/userdata/Database/textures13.db[/COLOR] Delete this and it will tell XBMC to regenerate your thumbnails - must do this if delting thumbnails folder.'
+    '[CR][COLOR=lime]/xbmc.log (or Kodi.log)[/COLOR] Delete your log files, this includes any crashlog files you may have.'
+    '[CR][CR][COLOR=blue][B]Step 3: Compress and upload[/B][/COLOR][CR]Use a program like 7zip to create a zip file of your remaining folders and upload to a file sharing site like dropbox.'
+    '[CR][CR][COLOR=blue][B]Step 4: Submit build at TotalXBMC[/B][/COLOR]'
+    '[CR]Create a thread on the Community Builds section of the forum at [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B].[CR]Full details can be found on there of the template you should use when posting.')
+    
 def Instructions_2():
-    TextBoxes('More Coming Soon!', 'There will be more guides added soon![CR][COLOR=blue]In the meantime please visit the Community Builds forum at [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B] where full instructions along with video guides can be found.[/COLOR]')
+    TextBoxes('Installing a community build', '[COLOR=blue][B]Step 1 (Optional): Backup your system[/B][/COLOR][CR]We highly recommend creating a backup of your system in case you don\'t like the build and want to revert back. Choose the backup option from the main menu, you will be asked whether you would like to delete your addon_data folder, select no unless you want to lose all your settings. If you ever need your backup it\'s stored in the location you\'ve selected in the addon settings.'
+    '[CR][CR][COLOR=blue][B]Step 2: Browse the Community Builds[/B][/COLOR][CR]Find a community build you like the look of and make sure you read the description as it could contain unsuitable content or have specific install instructions. Once you\'ve found the build you want to install click on the install option and you\'ll have the option of a fresh install or a merge [COLOR=yellow](on android fresh instlall is not possible so it will automatically merge)[/COLOR]. The merge option will leave all your existing addons and userdata in place and just add the contents of the new build whereas the fresh (wipe) option will completely wipe your existing data and replace with content on the new build. Once you make your choice the download and extraction process will begin.'
+    '[CR][CR][COLOR=blue][B]Step 3: [/COLOR][COLOR=red]VERY IMPORTANT[/COLOR][COLOR=blue] Force Close XBMC/Kodi[/B][/COLOR][CR]For the install to complete properly you MUST force close XBMC/Kodi, if you exit XBMC cleanly the skin settings will not take effect and you\'ll end up with some sort of hybrid build not quite finished! The addon will attempt to force close but if it doesn\'t the easiest option is to just pull the power to your device unless you know how to force close XBMC/Kodi (e.g. on Windows it would be ALT + F4).'
+    '[CR][CR][COLOR=blue][B]Step 4: Load XBMC/Kodi[/B][/COLOR][CR]You can now safely load up XBMC/Kodi and all changes should have taken effect')
 
 def Instructions_3():
-    TextBoxes('Creating A Community Backup', '[COLOR=blue][B]Step 1: Backup your system[/B][CR]Choose the backup option from the main manu, you will be asked whether you would like to delete your addon_data folder. If you decide to choose this option [COLOR=yellow}[B]make sure[/COLOR][/B] you already have a full backup of your system as it will completely wipe your addon settings (any stored settings such as passwords or any other changes you\'ve made to addons since they were first installed).')
-
+    TextBoxes('What is a community build', 'Community Builds are pre-configured builds of XBMC/Kodi based on different users setups. Have you ever watched youtube videos or seen screenshots of Kodi in action and thought "wow I wish I could do that"? Well now you can have a brilliant setup at the click of a button, completely pre-configured by users on the [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B] forum. If you\'d like to get involved yourself and share your build with the community it\'s very simple to do, just go to the forum where you\'ll find full details or you can follow the guide in this addon.')
+ 
 def Instructions_4():
     TextBoxes('Creating A Community Backup', '[COLOR=blue][B]Step 1: Backup your system[/B][CR]Choose the backup option from the main manu, you will be asked whether you would like to delete your addon_data folder. If you decide to choose this option [COLOR=yellow}[B]make sure[/COLOR][/B] you already have a full backup of your system as it will completely wipe your addon settings (any stored settings such as passwords or any other changes you\'ve made to addons since they were first installed).')
 
@@ -327,7 +349,7 @@ def COMMUNITY_MENU(name,url,description,video):
     addDir('Full description','url',10,'','','',description)
 # NOT WORKING, DON'T KNOW WHY    addDirVid('Watch preview video',video,12,'','','',description)
     addDir('Install '+name+' Build',url,7,'','','',description)
-	
+    
 #---------------------------------------------------------------------------------------------------
 
 def DESCRIPTION(name,url,description):
@@ -511,34 +533,52 @@ def DeleteUserData():
                 os.unlink(os.path.join(root, f))
             for d in dirs:
                 shutil.rmtree(os.path.join(root, d))        
-    
 #---------------------------------------------------------------------------------------------------
 
 def WipeXBMC():
-    choice = xbmcgui.Dialog().yesno('[COLOR=red]WARNING[/COLOR]', 'This will completely wipe your existing setup and', 'revert your XBMC/Kodi install to a vanilla (fresh) state. ', 'Are you sure you want to continue?', nolabel='NO, take me back!',yeslabel='[COLOR=lime]YES, Delete Setup[/COLOR]')
-    if choice == 1:
-        choice2 = xbmcgui.Dialog().yesno('Absolutely sure?!', 'Are you [COLOR=lime]ABSOLUTELY[/COLOR] sure you want to continue?', 'This will delete ALL your addons and settings, once it\'s gone', 'there\'s no getting it back!', nolabel='NO, take me back!',yeslabel='[COLOR=lime]Continue, I understand[/COLOR]')
-        if choice2 == 1:
-         addonPath=xbmcaddon.Addon(id=AddonID).getAddonInfo('path'); addonPath=xbmc.translatePath(addonPath); 
-         xbmcPath=os.path.join(addonPath,"..",".."); xbmcPath=os.path.abspath(xbmcPath); failed=False
-         try:
+    plugintools.log("community.builds.WipeXBMC "+repr(params)); yes_pressed=plugintools.message_yes_no(AddonTitle,"This will completely wipe your existing setup.","Are you [COLOR=lime]ABSOSLUTELY[/COLOR] certain you wish to proceed?")
+    if yes_pressed:
+        addonPath=xbmcaddon.Addon(id=AddonID).getAddonInfo('path'); addonPath=xbmc.translatePath(addonPath); 
+        xbmcPath=os.path.join(addonPath,"..",".."); xbmcPath=os.path.abspath(xbmcPath); plugintools.log("community.builds.WipeXBMC xbmcPath="+xbmcPath); failed=False  
+        try:
             for root, dirs, files in os.walk(xbmcPath,topdown=False):
                 for name in files:
                     try: os.remove(os.path.join(root,name))
                     except:
-                        if name not in ["Addons15.db","MyVideos75.db","Textures13.db","xbmc.log","kodi.log"]: failed=True
+                        if name not in ["Addons15.db","Addons16.db","MyVideos75.db","MyVideos78.db","MyVideos90.db","Textures13.db","xbmc.log","kodi.log"]: failed=True
                         plugintools.log("Error removing "+root+" "+name)
                 for name in dirs:
                     try: os.rmdir(os.path.join(root,name))
                     except:
                         if name not in ["Database","userdata"]: failed=True
                         plugintools.log("Error removing "+root+" "+name)
-            if not failed: plugintools.log("TR Community Builds All user files removed, you now have a clean install"); plugintools.message(AddonTitle,"The process is complete, you're now back to a fresh Kodi configuration!","Please reboot your system or restart Kodi in order for the changes to be applied.")
-            else: passlugintools.log("TR Community Builds User files partially removed"); plugintools.message(AddonTitle,"The process is finished, you're now back to a fresh Kodi configuration!","Please reboot your system or restart Kodi in order for the changes to be applied.")
-         except: pass
+            if not failed: plugintools.log("community.builds.WipeXBMC All user files removed, you now have a clean install"); plugintools.message(AddonTitle,"Wipe complete, you now have a fresh install.","The addon will now attempt to close XBMC/Kodi."); xbmc.executebuiltin("RestartApp")
+            else: plugintools.log("community.builds.WipeXBMC User files partially removed"); plugintools.message(AddonTitle,"Wipe complete, you now have a fresh install.","The addon will now attempt to close XBMC/Kodi."); xbmc.executebuiltin("RestartApp")
+        except: plugintools.message(AddonTitle,"Problem found","Your settings has not been changed"); import traceback; plugintools.log(traceback.format_exc()); plugintools.log("community.builds.WipeXBMC NOT removed")
         plugintools.add_item(action="",title="Done",folder=False)
-    else: pass
+    else: plugintools.message(AddonTitle,"Your settings","has not been changed"); plugintools.add_item(action="",title="Done",folder=False)
+    
+#---------------------------------------------------------------------------------------------------
 
+def WipeInstall():
+    plugintools.log("community.builds.WipeXBMC "+repr(params)); yes_pressed=plugintools.message_yes_no(AddonTitle,"This will completely wipe your existing setup.","Are you [COLOR=lime]ABSOSLUTELY[/COLOR] certain you wish to proceed?")
+    if yes_pressed:
+        addonPath=xbmcaddon.Addon(id=AddonID).getAddonInfo('path'); addonPath=xbmc.translatePath(addonPath); 
+        xbmcPath=os.path.join(addonPath,"..",".."); xbmcPath=os.path.abspath(xbmcPath); plugintools.log("community.builds.WipeXBMC xbmcPath="+xbmcPath); failed=False  
+        try:
+            for root, dirs, files in os.walk(xbmcPath,topdown=False):
+                for name in files:
+                    try: os.remove(os.path.join(root,name))
+                    except:
+                        if name not in ["Addons*.db","MyVideos*.db","Textures*.db","xbmc.log","kodi.log"]: failed=True
+                        plugintools.log("Error removing "+root+" "+name)
+                for name in dirs:
+                    try: os.rmdir(os.path.join(root,name))
+                    except:
+                        if name not in ["Database","userdata"]: failed=True
+                        plugintools.log("Error removing "+root+" "+name)
+        except: pass
+    else: return
 #---------------------------------------------------------------------------------------------------
 
 def get_params():
@@ -568,7 +608,7 @@ def addDir(name,url,mode,iconimage,fanart,video,description):
         liz.setInfo( type="Video", infoLabels={ "Title": name, "Plot": description } )
         liz.setProperty( "Fanart_Image", fanart )
         liz.setProperty( "Build.Video", video )
-        if mode==None or mode==5 or mode==1 or mode==6 or mode==8 or mode==11 or mode==13 or url==None or len(url)<1:
+        if (mode==None) or (mode==5) or (mode==1) or (mode==6) or (mode==8) or (mode==11) or (mode==13) or (url==None) or (len(url)<1):
             ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
         else:
             ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
@@ -584,11 +624,23 @@ def addDirvid(name,url,mode,iconimage,fanart,video,description):
         liz.setProperty('IsPlayable', 'true')
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
 
-def PLAYVIDEO(video):
-    import yt    
-    yt.PlayVideo(video)                      
 #---------------------------------------------------------------------------------------------------
-               
+def platform():
+    if xbmc.getCondVisibility('system.platform.android'):
+        return 'android'
+    elif xbmc.getCondVisibility('system.platform.linux'):
+        return 'linux'
+    elif xbmc.getCondVisibility('system.platform.windows'):
+        return 'windows'
+    elif xbmc.getCondVisibility('system.platform.osx'):
+        return 'osx'
+    elif xbmc.getCondVisibility('system.platform.atv2'):
+        return 'atv2'
+    elif xbmc.getCondVisibility('system.platform.ios'):
+        return 'ios'
+   
+#---------------------------------------------------------------------------------------------------
+   
 params=get_params()
 url=None
 name=None
@@ -676,13 +728,13 @@ elif mode==15:
 elif mode==16:
         print "############   SHOW INSTRUCTIONS 3   #################"
         Instructions_3()
-elif mode==16:
+elif mode==17:
         print "############   SHOW INSTRUCTIONS 4   #################"
         Instructions_4()
-elif mode==16:
+elif mode==18:
         print "############   SHOW INSTRUCTIONS 5   #################"
         Instructions_5()
-elif mode==16:
+elif mode==19:
         print "############   SHOW INSTRUCTIONS 6   #################"
         Instructions_6()
 

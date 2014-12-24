@@ -1,5 +1,7 @@
 <settings>
     <category label="Backup Folder">
         <setting id="zip" type="folder"    label="Choose Backup Storage Location"      default=""/>
-    </category>
+		<setting type="lsep" label="[COLOR=red]DO NOT[/COLOR] use a location inside your XBMC/Kodi setup."/>
+		<setting type="lsep" label="The storage location [COLOR=lime]MUST[/COLOR] be elsewhere."/>
+	</category>
 </settings>
