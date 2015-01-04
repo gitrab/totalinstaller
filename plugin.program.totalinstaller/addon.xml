@@ -8,8 +8,9 @@
 </extension>
 <extension point="xbmc.addon.metadata">
 <summary>Total Installer</summary>
-	<description>Every XBMC addon available. No prejudice against any sites or developers - this is a collection of EVERY XBMC Addon available with over 2,000 so far! BIG thanks go to blazetamer for creating the original Addon Installer that was used as a base for this new installer.</description>
-		<website>http://www.totalxbmc.tv</website>
+<description>Every XBMC addon available. No prejudice against any sites or developers - this is a collection of EVERY XBMC Addon available with over 2,000 so far! BIG thanks go to blazetamer for creating the original Addon Installer that was used as a base for this new installer.</description>
+<website>http://www.totalxbmc.tv</website>
 <platform>all</platform>
+<license>GNU GENERAL PUBLIC LICENSE. Version 3, June 2007</license>
 </extension>
 </addon>
