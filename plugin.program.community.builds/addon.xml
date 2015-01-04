@@ -10,5 +10,6 @@
     <summary lang="en">TotalRevolution Community Builds</summary>
     <description lang="en">Backup/restore your own build or install one of the many community builds available.[CR]Brought to you by [COLOR=lime][B]TotalXBMC[/COLOR][/B].[CR][CR]Thanks to Mikey1234 for the original code in the USB/SD Wizard addon.</description>
     <platform>all</platform>
+    <license>GNU GENERAL PUBLIC LICENSE. Version 3, June 2007</license>
   </extension>
 </addon>
