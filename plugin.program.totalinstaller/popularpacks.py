@@ -12,13 +12,15 @@ ADDON=xbmcaddon.Addon(id='plugin.program.totalinstaller')
 VERSION = "1.0.7"
 PATH = "Total Installer"            
     
+#-----------------------------------------------------------------------------------------------------------------
 def POPULAR():
     link = OPEN_URL('http://totalxbmc.tv/totalrevolution/Addon_Packs/addonpacks.txt').replace('\n','').replace('\r','')
     match = re.compile('name="(.+?)".+?rl="(.+?)".+?mg="(.+?)".+?anart="(.+?)".+?escription="(.+?)"').findall(link)
     for name,url,iconimage,fanart,description in match:
         addDir(name,url,'popularwizard',iconimage,fanart,description)
-    setView('movies', 'MAIN')
+    AUTO_VIEW()
 
+#-----------------------------------------------------------------------------------------------------------------
 def OPEN_URL(url):
     req = urllib2.Request(url)
     req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
@@ -27,6 +29,7 @@ def OPEN_URL(url):
     response.close()
     return link
 
+#-----------------------------------------------------------------------------------------------------------------
 def POPULARWIZARD(name,url,description):
     choice = xbmcgui.Dialog().yesno(name, 'This will install the '+name, '', 'Are you sure you want to continue?', nolabel='Cancel',yeslabel='Accept')
     if choice == 0:
@@ -52,6 +55,7 @@ def POPULARWIZARD(name,url,description):
             xbmc.executebuiltin( 'UpdateAddonRepos' )
 #            xbmc.executebuiltin("LoadProfile(Master user)")
 
+#-----------------------------------------------------------------------------------------------------------------
 def addDir(name,url,mode,iconimage,fanart,description):
         u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&iconimage="+urllib.quote_plus(iconimage)+"&fanart="+urllib.quote_plus(fanart)+"&description="+urllib.quote_plus(description)
         ok=True
@@ -61,6 +65,21 @@ def addDir(name,url,mode,iconimage,fanart,description):
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
         return ok
         
+#-----------------------------------------------------------------------------------------------------------------
+def AUTO_VIEW(content = ''):
+    if not content:
+        return
+
+    xbmcplugin.setContent(int(sys.argv[1]), content)
+    if ADDON.getSetting('auto-view') != 'true':
+        return
+
+    if content == 'addons':
+        xbmc.executebuiltin("Container.SetViewMode(%s)" % ADDON.getSetting('addon_view'))
+    else:
+        xbmc.executebuiltin("Container.SetViewMode(%s)" % ADDON.getSetting('default-view'))
+
+#-----------------------------------------------------------------------------------------------------------------
 def get_params():
         param=[]
         paramstring=sys.argv[2]
@@ -118,14 +137,4 @@ print "URL: "+str(url)
 print "Name: "+str(name)
 print "IconImage: "+str(iconimage)
 
-def setView(content, viewType):
-    # set content type so library shows more views and info
-    if content:
-        xbmcplugin.setContent(int(sys.argv[1]), content)
-    if ADDON.getSetting('auto-view')=='true':
-        xbmc.executebuiltin("Container.SetViewMode(%s)" % ADDON.getSetting(viewType) )
-                
-#if mode==None or url==None or len(url)<1:
-#        POPULAR()
-       
 if mode=='popularwizard': POPULARWIZARD(name,url,description)

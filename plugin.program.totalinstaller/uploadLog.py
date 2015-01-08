@@ -99,9 +99,9 @@ class LogUploader(object):
             raise Exception('No Email set!')
         post_dict = {'email': mail_address}
         for logfile in uploaded_logs:
-            if logfile['title'] == 'xbmc.log':
+            if logfile['title'] == 'xbmc.log' or 'kodi.log':
                 post_dict['xbmclog_id'] = logfile['paste_id']
-            elif logfile['title'] == 'xbmc.old.log':
+            elif logfile['title'] == 'xbmc.old.log' or 'kodi.old.log':
                 post_dict['oldlog_id'] = logfile['paste_id']
             elif logfile['title'] == 'crash.log':
                 post_dict['crashlog_id'] = logfile['paste_id']
@@ -114,6 +114,8 @@ class LogUploader(object):
             print response
 
     def __get_logs(self):
+        xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
+        version=float(xbmc_version[:4])
         log_path = translate('special://logpath')
         crashlog_path = None
         crashfile_match = None
@@ -122,16 +124,26 @@ class LogUploader(object):
                 os.path.expanduser('~'),
                 'Library/Logs/CrashReporter'
             )
-            crashfile_match = 'XBMC'
+            if version < 14:
+                crashfile_match = 'XBMC'
+            else:
+                crashfile_match = 'kodi'
         elif condition('system.platform.windows'):
             crashlog_path = log_path
             crashfile_match = '.dmp'
         elif condition('system.platform.linux'):
             crashlog_path = os.path.expanduser('~')
-            crashfile_match = 'xbmc_crashlog'
+            if version < 14:
+                crashfile_match = 'xbmc_crashlog'
+            else:
+                crashfile_match = 'kodi_crashlog'
         # get fullpath for xbmc.log and xbmc.old.log
-        log = os.path.join(log_path, 'xbmc.log')
-        log_old = os.path.join(log_path, 'xbmc.old.log')
+        if version < 14:
+            log = os.path.join(log_path, 'xbmc.log')
+            log_old = os.path.join(log_path, 'xbmc.old.log')
+        else:
+            log = os.path.join(log_path, 'kodi.log')
+            log_old = os.path.join(log_path, 'kodi.old.log')
         # check for XBMC crashlogs
         log_crash = None
         if crashlog_path and os.path.isdir(crashlog_path) and crashfile_match:
@@ -145,10 +157,16 @@ class LogUploader(object):
                 log_crash = os.path.join(crashlog_path, crashlog_files[-1])
         found_logs = []
         if os.path.isfile(log):
-            found_logs.append({
-                'title': 'xbmc.log',
-                'path': log
-            })
+            if version < 14:
+                found_logs.append({
+                    'title': 'xbmc.log',
+                    'path': log
+                })
+            else:
+                found_logs.append({
+                    'title': 'kodi.log',
+                    'path': log
+                })
         if log_crash and os.path.isfile(log_crash):
             found_logs.append({
                 'title': 'crash.log',

@@ -1,7 +1,10 @@
-# totalXBMC Installer based on original XBMCHUB.com Addon Installer  Module By: Blazetamer-2013-2014
-# Refactored by: Yours Truly 2014!!
+# This code is licensed under The GNU General Public License version 2 (GPLv2)
+# If you decide to fork this code please obey by the licensing rules.
+#
+# Total Installer based on original Addon Installer  Module By: Blazetamer-2013-2014
+# Refactored by: spoyser and whufclee. Barely any of the original Blazetamer code exists anymore
 
-import urllib, urllib2, re, xbmcplugin, xbmcgui, xbmc, xbmcaddon, os, sys, time,xbmcvfs
+import urllib, urllib2, re, xbmcplugin, xbmcgui, xbmc, xbmcaddon, os, sys, time, xbmcvfs
 import extract
 import shutil
 import subprocess
@@ -9,61 +12,163 @@ import datetime
 import extract
 import downloader
 import popularpacks
-import communitybuilds
-import whufclee
 import addonfix
-import backuprestore
+import speedtest
+from addon.common.addon import Addon
+from addon.common.net import Net
 
 ADDON_ID   = 'plugin.program.totalinstaller'
 BASEURL    = 'http://addons.totalxbmc.com/'
-ADDON      = xbmcaddon.Addon(id=ADDON_ID)
-HOME       = ADDON.getAddonInfo('path')
-ARTPATH    = xbmc.translatePath(os.path.join(HOME, 'resources', 'art')) + os.sep
-FANART     = os.path.join(ARTPATH, 'fanart.jpg')
+ADDON      =  xbmcaddon.Addon(id=ADDON_ID)
+HOME       =  ADDON.getAddonInfo('path')
+ARTPATH    =  'http://totalxbmc.tv/totalrevolution/art/' + os.sep
+FANART     =  'http://totalxbmc.tv/totalrevolution/art/fanart.jpg'
 zip        =  ADDON.getSetting('zip')
 dialog     =  xbmcgui.Dialog()
 dp         =  xbmcgui.DialogProgress()
 USERDATA   =  xbmc.translatePath(os.path.join('special://home/userdata',''))
 ADDON_DATA =  xbmc.translatePath(os.path.join(USERDATA,'addon_data'))
 ADDONS     =  xbmc.translatePath(os.path.join('special://home','addons'))
-GUI        =  xbmc.translatePath(os.path.join(USERDATA,'guisettings.xml'))
-FAVS       =  xbmc.translatePath(os.path.join(USERDATA,'favourites.xml'))
-SOURCE     =  xbmc.translatePath(os.path.join(USERDATA,'sources.xml'))
-ADVANCED   =  xbmc.translatePath(os.path.join(USERDATA,'advancedsettings.xml'))
-RSS        =  xbmc.translatePath(os.path.join(USERDATA,'RssFeeds.xml'))
-KEYMAPS    =  xbmc.translatePath(os.path.join(USERDATA,'keymaps','keyboard.xml'))
 USB        =  xbmc.translatePath(os.path.join(zip))
 skin       =  xbmc.getSkinDir()
-
+net        =  Net()
+ytlink     = 'http://gdata.youtube.com/feeds/api/users/"+YT_ID+"/playlists?start-index=1&max-results=25'
 #-----------------------------------------------------------------------------------------------------------------
 
 def MAININDEX():
-    addDir('Search For Addons','none','addonmenu', '', 'update.png')
-#    addDir('Install Community Builds', 'none', 'community', '', 'categories2.png')
-    addDir('Install Popular Packs', 'none', 'popular', '', 'categories2.png')
-#    addDir('How To Guides', 'http://gdata.youtube.com/feeds/api/users/TotalXBMC/playlists?start-index=1&max-results=25', 'videoguides', 'Tutorial guides', 'categories2.png')
-    addDir('Make Addons Gotham Compatible','none','gotham', '', 'update.png')
-    addDir('Update My Addons (Force Refresh)', 'none', 'update', '', 'update.png')
-    addDir('Backup My System', 'none', 'backup', '', 'update.png')
-    addDir('Addon Fixes', 'none', 'addonfix', '', 'categories2.png')
-    addDir('Upload Log','none','uploadlog', '', 'update.png')
+    addDir('Search For Addons','none','addonmenu', 'Search_Addons.png')
+    addDir('Install Community Builds', 'none', 'community', 'Community_Builds.png')
+    addDir('Addon Fixes', 'none', 'addonfixes', 'Addon_Fixes.png')
+    addDir('How To Guides','http://gdata.youtube.com/feeds/api/users/TotalXBMC/playlists?start-index=1&max-results=25', 'howto', 'How_To.png')
+    addDir('Additional Tools','none', 'tools', 'Additional_Tools.png')
     AUTO_VIEW()
 
 #-----------------------------------------------------------------------------------------------------------------
+def TOOLS():
+    addDir('Upload Log','none','uploadlog', 'Log_File.png')
+    addDir('View My Log','none','log', 'View_Log.png')
+    addDir('Check My IP Address', 'none', 'ipcheck', 'Check_IP.png')
+    addDir('Test My Download Speed', 'none', 'speedtest', 'Speed_Test.png')
+    addDir('Check XBMC/Kodi Version', 'none', 'xbmcversion', 'Version_Check.png')
+    addDir('Backup My System', 'none', 'backup', 'Backup.png')
+    addDir('Restore A Backup', 'none', 'restore', 'Restore.png')
+    addDir('Wipe My Install (Fresh Start)', 'none', 'wipe', 'Fresh_Start.png')
+    AUTO_VIEW()
 
+#-----------------------------------------------------------------------------------------------------------------
+def ADDONFIXES():
+    addDir('Test My Download Speed', 'none', 'speedtest', 'Speed_Test.png')
+    addDir('Make Addons Gotham Compatible','none','gotham', 'Gotham_Compatible.png')
+    addDir('Make Addons Kodi (Helix) Compatible','none','helix', 'Kodi_Compatible.png')
+    addDir('Update My Addons (Force Refresh)', 'none', 'update', 'Update_Addons.png')
+    addDir('OnTapp.TV / OSS Integration', 'none', 'addonfix', 'Addon_Fixes.png')
+    AUTO_VIEW()
+
+#-----------------------------------------------------------------------------------------------------------------
+def HOWTOGUIDES(url):
+    pluginpath=os.path.exists(xbmc.translatePath(os.path.join('special://home','addons','plugin.video.whufclee')))
+    if pluginpath:
+        xbmc.executebuiltin("ActivateWindow(10025,plugin://plugin.video.whufclee/,return)")
+        return
+    else:
+        choice = xbmcgui.Dialog().yesno('Install TotalXBMC Guides', 'This requires the TotalXBMC Guides addon to be installed.', 'Would you like to install this addon now?')
+        if choice == 0: return
+        elif choice == 1:
+            ADDONINSTALL('TotalXBMC Guides', 'https://github.com/totalxbmc/HomelessAddons/raw/master/plugin.video.whufclee/plugin.video.whufclee-1.0.5.zip', 'addon', 'https://github.com/totalxbmc/HomelessAddons/raw/master/repository.homeless.addons/repository.homeless.addons-1.0.1.zip', 'whufclee')
+            xbmc.executebuiltin("ActivateWindow(10025,plugin://plugin.video.whufclee/,return)")
+    return
+#-----------------------------------------------------------------------------------------------------------------
+def LOGVIEWER():
+    log_path = xbmc.translatePath('special://logpath')
+    xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
+    version=float(xbmc_version[:4])
+    if version < 14:
+        log = os.path.join(log_path, 'xbmc.log')
+        TextBoxes('XBMC Log', log)
+    else:
+        log = os.path.join(log_path, 'kodi.log')
+        TextBoxes('Kodi Log', log)
+
+#-----------------------------------------------------------------------------------------------------------------
+def COMMUNITYBUILDS():
+    pluginpath=os.path.exists(xbmc.translatePath(os.path.join('special://home','addons','plugin.program.community.builds')))
+    if pluginpath:
+        xbmc.executebuiltin("RunAddon(plugin.program.community.builds)")
+        return
+    else:
+        choice = xbmcgui.Dialog().yesno('Install Community Builds', 'This requires the TR Community Builds addon to be installed.', 'Would you like to install this addon now?')
+        if choice == 0: return
+        elif choice == 1:
+            ADDONINSTALL('TotalXBMC Guides', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/plugin.program.community.builds/plugin.program.community.builds-1.0.9.zip?raw=true', 'addon', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/repository.totalinstaller/repository.totalinstaller-1.0.2.zip?raw=true', 'whufclee')
+            xbmc.executebuiltin("RunAddon(plugin.program.community.builds)")
+        return
+
+#-----------------------------------------------------------------------------------------------------------------
+def BACKUP():
+    pluginpath=os.path.exists(xbmc.translatePath(os.path.join('special://home','addons','plugin.program.community.builds')))
+    if pluginpath:
+        xbmc.executebuiltin("ActivateWindow(10001,plugin://plugin.program.community.builds/?url=url&mode=1&name=Backup+My+Content&iconimage=&fanart=&video=&description=Back+Up+Your+Data,return)")
+        return
+    else:
+        choice = xbmcgui.Dialog().yesno('Install TR Community Builds', 'This requires the TR Community Builds addon to be installed.', 'Would you like to install this addon now?')
+        if choice == 0: return
+        elif choice == 1:
+            ADDONINSTALL('TR Community Builds', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/plugin.program.community.builds/plugin.program.community.builds-1.0.9.zip?raw=true', 'addon', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/repository.totalinstaller/repository.totalinstaller-1.0.2.zip?raw=true', 'whufclee')
+            xbmc.executebuiltin("ActivateWindow(10001,plugin://plugin.program.community.builds/?url=url&mode=1&name=Backup+My+Content&iconimage=&fanart=&video=&description=Back+Up+Your+Data,return)")
+        return
+
+#-----------------------------------------------------------------------------------------------------------------
+def RESTORE():
+    pluginpath=os.path.exists(xbmc.translatePath(os.path.join('special://home','addons','plugin.program.community.builds')))
+    if pluginpath:
+        xbmc.executebuiltin("ActivateWindow(10001,plugin://plugin.program.community.builds/?description=Restore%20Your%20Data&fanart&iconimage&mode=5&name=Restore%20My%20Content&url=url&video,return)")
+        return
+    else:
+        choice = xbmcgui.Dialog().yesno('Install TR Community Builds', 'This requires the TR Community Builds addon to be installed.', 'Would you like to install this addon now?')
+        if choice == 0: return
+        elif choice == 1:
+            ADDONINSTALL('TR Community Builds', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/plugin.program.community.builds/plugin.program.community.builds-1.0.9.zip?raw=true', 'addon', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/repository.totalinstaller/repository.totalinstaller-1.0.2.zip?raw=true', 'whufclee')
+            xbmc.executebuiltin("ActivateWindow(10001,plugin://plugin.program.community.builds/?description=Restore%20Your%20Data&fanart&iconimage&mode=5&name=Restore%20My%20Content&url=url&video,return)")
+        return
+
+#-----------------------------------------------------------------------------------------------------------------
+def WIPE():
+    pluginpath=os.path.exists(xbmc.translatePath(os.path.join('special://home','addons','plugin.program.community.builds')))
+    if pluginpath:
+        xbmc.executebuiltin("ActivateWindow(10001,plugin://plugin.program.community.builds/?url=url&mode=9&name=Wipe+My+Setup+%28Fresh+Start%29&iconimage=&fanart=&video=&description=Wipe+your+special+XBMC%2FKodi+directory+which+will+revert+back+to+a+vanillla+build.)")
+        return
+    else:
+        choice = xbmcgui.Dialog().yesno('Install TR Community Builds', 'This requires the TR Community Builds addon to be installed.', 'Would you like to install this addon now?')
+        if choice == 0: return
+        elif choice == 1:
+            ADDONINSTALL('TR Community Builds', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/plugin.program.community.builds/plugin.program.community.builds-1.0.9.zip?raw=true', 'addon', 'https://github.com/totalxbmc/totalinstaller/blob/master/zips/repository.totalinstaller/repository.totalinstaller-1.0.2.zip?raw=true', 'whufclee')
+            xbmc.executebuiltin("ActivateWindow(10001,plugin://plugin.program.community.builds/?url=url&mode=9&name=Wipe+My+Setup+%28Fresh+Start%29&iconimage=&fanart=&video=&description=Wipe+your+special+XBMC%2FKodi+directory+which+will+revert+back+to+a+vanillla+build.)")
+        return
+
+#-----------------------------------------------------------------------------------------------------------------
+#Thanks to metalkettle for his work on the original IP checker addon        
+def IPCHECK(url='http://www.iplocation.net/',inc=1):
+    match=re.compile("<td width='80'>(.+?)</td><td>(.+?)</td><td>(.+?)</td><td>.+?</td><td>(.+?)</td>").findall(net.http_GET(url).content)
+    for ip, region, country, isp in match:
+        if inc <2: dialog=xbmcgui.Dialog(); dialog.ok('Check My IP',"[B][COLOR gold]Your IP Address is: [/COLOR][/B] %s" % ip, '[B][COLOR gold]Your IP is based in: [/COLOR][/B] %s' % country, '[B][COLOR gold]Your Service Provider is:[/COLOR][/B] %s' % isp)
+        inc=inc+1
+
+#-----------------------------------------------------------------------------------------------------------------
+        
 def ADDONMENU():
-    addDir('Manual Search','http://addons.totalxbmc.com/search/?keyword=','searchaddon', '', 'Search.png')
+    addDir('Manual Search','http://addons.totalxbmc.com/search/?keyword=','searchaddon', 'Manual_Search.png')
+    addDir('Install Popular Packs', 'none', 'popular', 'Addon_Packs.png')
     if ADDON.getSetting('genre') == 'true':
-        addDir('Search by Genres', 'none', 'genres', '', 'genres.png')
+        addDir('Search by Genres', 'none', 'genres', 'Search_Genre.png')
 
     if ADDON.getSetting('countries') == 'true':
-        addDir('Search by Countries', 'none', 'countries', '', 'countries.png')
+        addDir('Search by Countries', 'none', 'countries', 'Search_Country.png')
 
     if ADDON.getSetting('categories') == 'true':
-        addDir('Search by XBMC Categories', 'none', 'categories', '', 'categories2.png')
+        addDir('Search by Kodi Categories', 'none', 'categories', 'Search_Category.png')
 
     if ADDON.getSetting('repositories') == 'true':
-        addDir('Install Repositories', 'category/repositories/', 'repolist', '', 'repositories.png')
+        addDir('Install Repositories', 'category/repositories/', 'repolist', 'Install_Repositories.png')
     AUTO_VIEW()
 
 #-----------------------------------------------------------------------------------------------------------------
@@ -82,7 +187,7 @@ def INSTALLERROR():
     if confirm == 0:
         return    
     elif confirm == 1:
-		UPLOADLOG()
+        UPLOADLOG()
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -91,46 +196,17 @@ def PLAYVIDEO(url):
     yt.PlayVideo(url)
 
 #-----------------------------------------------------------------------------------------------------------------
-def VIDEOGUIDES(): 
-    xbmc.executebuiltin('XBMC.RunAddon(plugin.video.whufclee)')
-
-#-----------------------------------------------------------------------------------------------------------------
-	
+    
 def addCategory(category, alt):    
     if ADDON.getSetting(alt) == 'true':
-        addDir(category, 'category/categories2/%s/' % alt, 'addonlist', '', alt+'.png')   
+        addDir(category, 'category/categories2/%s/' % alt, 'addonlist', alt+'.png')   
  
 def CATEGORIES():        
     addCategory('Audio Addons',  'audio')
     addCategory('Lyrics Addons', 'lyrics')
 
     if ADDON.getSetting('metadata') == 'true':
-        addDir('Metadata', 'none', 'metadata', '', 'metadata.png')
-
-    addCategory('Picture Addons', 'pictures')
-    addCategory('Program Addons', 'programs')
-    addCategory('Screensavers',   'screensaver')
-    addCategory('Services',       'services')
-    addCategory('Skins',          'skins')
-    addCategory('Subtitles',      'subtitles')
-    addCategory('Video Addons',   'video')
-    addCategory('Weather',        'weather')
-    addCategory('Web Interface',  'webinterface') 
-
-    AUTO_VIEW()
-
-#-----------------------------------------------------------------------------------------------------------------
-
-def addCountry(country, alt):
-    if ADDON.getSetting(alt) == 'true':
-        addDir(country, 'category/categories2/%s/' % alt, 'addonlist', '', alt+'.png')   
-
-def AddPackCategory():        
-    addCategory('Audio Addons',  'audio')
-    addCategory('Lyrics Addons', 'lyrics')
-
-    if ADDON.getSetting('metadata') == 'true':
-        addDir('Metadata', 'none', 'metadata', '', 'metadata.png')
+        addDir('Metadata', 'none', 'metadata', 'metadata.png')
 
     addCategory('Picture Addons', 'pictures')
     addCategory('Program Addons', 'programs')
@@ -147,9 +223,10 @@ def AddPackCategory():
 #-----------------------------------------------------------------------------------------------------------------
 def addMeta(meta, alt):    
     if ADDON.getSetting('meta'+alt) == 'true':
-        addDir(meta, 'category/categories2/metadata/%s/' % alt, 'addonlist', '', alt+'.png')  
+# diff from 1.5       addDir(meta, 'category/categories2/metadata/%s/' % alt, 'addonlist', '', alt+'.png')  
+        addDir(meta, 'category/categories2/metadata/%s/' % alt, 'addonlist', alt+'.png')  
 
-
+#-----------------------------------------------------------------------------------------------------------------
 def METADATA():        
     addMeta('Album Metadata',       'albums')
     addMeta('Artist Metadata',      'artists')
@@ -160,7 +237,6 @@ def METADATA():
     AUTO_VIEW()
 
 #-----------------------------------------------------------------------------------------------------------------
-
 def addGenre(genre):
     lower = genre.lower()
     lower = lower.replace(' ', '')
@@ -174,7 +250,7 @@ def addGenre(genre):
     lower = lower.replace('xxx',          'adult')
 
     if ADDON.getSetting(lower) == 'true':
-        addDir(genre, 'category/genres/%s/' % lower, 'addonlist', '', lower+'.png')
+        addDir(genre, 'category/genres/%s/' % lower, 'addonlist', lower+'.png')
 
 def GENRES():       
     addGenre('Anime')
@@ -206,12 +282,11 @@ def GENRES():
 
     AUTO_VIEW()
 
-#-----------------------------------------------------------------------------------------------------------------
-
+#----------------------------------------------------------------------------------------------------------------
 def addCountry(country):
     lower = country.lower()
     if ADDON.getSetting(lower) == 'true':
-        addDir(country, 'category/countries/%s/' % lower, 'addonlist', '', lower+'.png')
+        addDir(country, 'category/countries/%s/' % lower, 'addonlist', lower+'.png')
     
 def COUNTRIES():        
      #addCountry('African')
@@ -272,27 +347,26 @@ def COUNTRIES():
 def nextPage(link, mode):
     nmatch = re.compile('"page last" href="(.+?)"><dfn title="next Page">').findall(link)
     if len(nmatch) > 0:
-        addDir('Next Page', nmatch[0], mode, '', '')
-
-#-----------------------------------------------------------------------------------------------------------------
-
-def ADDONLIST(url):
-    link  = OPEN_URL(url)
-    match = re.compile('<li><a href="(.+?)"><span class="thumbnail"><img src="(.+?)" width="100%" alt="(.+?)"').findall(link)
-
-    for url, image, name, in match:
-        iconimage = BASEURL+ image
-        add2HELPDir(name, url, 'addonindex', iconimage, FANART, '', 'addon')                    
-        
-    nextPage(link, 'addonlist')    
-
-    AUTO_VIEW() 
+        addDir('Next Page', nmatch[0], mode, '')
 
 #-----------------------------------------------------------------------------------------------------------------
     
 def REPOLIST(url):
-    d = xbmcgui.Dialog()
-    d.ok('Repository Info', 'It\'s unlikely you\'ll need this section as the relevant repositories are installed when you install an addon. However if you encounter any issues you can install a repo and then try installing an addon via the traditional XBMC method.')
+    link  = OPEN_URL(url)
+    match = re.compile('<li><a href="(.+?)"><span class="thumbnail"><img src="(.+?)" width="100%" alt="(.+?)"').findall(link)
+
+    for url, image, name, in match:
+        if 'repo' in name.lower():
+            iconimage = BASEURL + image
+            add2HELPDir(name, url, 'addonindex', iconimage, FANART, '', 'addon')
+                      
+    nextPage(link, 'repolist')    
+           
+    AUTO_VIEW('list')    
+
+#-----------------------------------------------------------------------------------------------------------------
+
+def ADDONLIST(url):
     link  = OPEN_URL(url)
     match = re.compile('<li><a href="(.+?)"><span class="thumbnail"><img src="(.+?)" width="100%" alt="(.+?)"').findall(link)
 
@@ -302,7 +376,7 @@ def REPOLIST(url):
         
     nextPage(link, 'addonlist')    
 
-    AUTO_VIEW() 
+    AUTO_VIEW('list') 
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -343,20 +417,19 @@ def ADDONINDEX(name, url, filetype):
     platform     = match14[0] if (len(match14) > 0) else '[COLOR red]No platform information available[/COLOR]'
     addonid      = match15[0] if (len(match15) > 0) else ''
     iconimage    = BASEURL + image
-	
-#	check if there is a repo link, if not it needs use repository2 otherwise a load of garbage is added to the string
+    
+#   check if there is a repo link, if not it needs use repository2 otherwise a load of garbage is added to the string
     if status == '[COLOR lime]No problems reported[/COLOR]':
-        addDir('Live Info: '  +status, url, 'addonindex', '', 'categories2.png')
+        addDir('Live Info: '  +status, url, 'addonindex', iconimage)
     else:
-        addDir('Live Info: [COLOR=red]BROKEN - see notes below[/COLOR]', 'addonindex', '', 'categories2.png')
+        addDir('Live Info: [COLOR=red]BROKEN - see notes below[/COLOR]', 'addonindex', iconimage)
 
-    addDir('Full Details (inc. any important notes)', url, 'addonstatus', '', 'categories2.png')
-    addHELPDir('Install '+name, '  (Addon Type:'+addontype+')', addonurl, 'addoninstall', iconimage, FANART, description, 'addon', repourl, version)
+    addDir('Full Details (inc. any important notes)', url, 'addonstatus', iconimage)
+    addHELPDir('Install '+name, '  (Addon Type:'+addontype+')', addonurl, 'addoninstall', iconimage, FANART, description, 'addon', repourl, version, author)
     for video, name in videos:
         image = 'https://i1.ytimg.com/vi/%s/mqdefault.jpg' % video[:11]
         add2HELPDir(name, video, 'watch_video', image, fanart='', description='', filetype='', isFolder=False)
-    addDir('[COLOR=red]Having problems installing?[/COLOR]','none','installerror', '', 'update.png')
-    xbmcgui.Dialog().ok(name, 'This addon has been coded by [COLOR=blue] '+author+' [/COLOR]. Please consider showing your appreciation on the relevant support forum.')  
+    addDir('[COLOR=red]Having problems installing?[/COLOR]','none','installerror', 'Log_File.png')
 
     AUTO_VIEW()
 
@@ -400,10 +473,10 @@ def ADDONSTATUS(url):
     iconimage    = BASEURL + image
 
     if len(repository1) < 50:
-		TextBoxes(name+'   v.'+version, '[COLOR blue]Remember we rely on[/COLOR] [COLOR white]YOU[/COLOR] [COLOR blue]the brilliant XBMC/Kodi Community to keep this info updated.''\nIf any of this information is incorrect please let us know,''\n''just post a report on the forum at[/COLOR] [COLOR lime]www.totalxbmc.tv[/COLOR]\n\n\n''Supported Platforms:  '+platform+'\n\n''Addon Type:  '+addontype+'\n\n''Genre:  '+genres+'\n\n''Developer:  '+author+'\n\n''Repository:  '+repository1+'\n\n''Status:  [COLOR red]'+status+'[/COLOR]\n\n''Notes:  [COLOR yellow]'+notes+'[/COLOR]\n\n''Description:  [COLOR blue]'+description+'[/COLOR]')
+        TextBoxes(name+'   v.'+version, '[COLOR blue]Remember we rely on[/COLOR] [COLOR white]YOU[/COLOR] [COLOR blue]the brilliant XBMC/Kodi Community to keep this info updated.''\nIf any of this information is incorrect please let us know,''\n''just post a report on the forum at[/COLOR] [COLOR lime]www.totalxbmc.tv[/COLOR]\n\n\n''Supported Platforms:  '+platform+'\n\n''Addon Type:  '+addontype+'\n\n''Genre:  '+genres+'\n\n''Developer:  '+author+'\n\n''Repository:  '+repository1+'\n\n''Status:  [COLOR red]'+status+'[/COLOR]\n\n''Notes:  [COLOR yellow]'+notes+'[/COLOR]\n\n''Description:  [COLOR blue]'+description+'[/COLOR]')
     else:
-		TextBoxes(name+'   v.'+version, '[COLOR blue]Remember we rely on[/COLOR] [COLOR white]YOU[/COLOR] [COLOR blue]the brilliant XBMC/Kodi Community to keep this info updated.''\nIf any of this information is incorrect please let us know,''\n''just post a report on the forum at[/COLOR] [COLOR lime]www.totalxbmc.tv[/COLOR]\n\n\n''Supported Platforms:  '+platform+'\n\n''Addon Type:  '+addontype+'\n\n''Genre:  '+genres+'\n\n''Developer:  '+author+'\n\n''Repository:  '+repository2+'\n\n''Status:  [COLOR red]'+status+'[/COLOR]\n\n''Notes:  [COLOR yellow]'+notes+'[/COLOR]\n\n''Description:  [COLOR blue]'+description+'[/COLOR]')
-	
+        TextBoxes(name+'   v.'+version, '[COLOR blue]Remember we rely on[/COLOR] [COLOR white]YOU[/COLOR] [COLOR blue]the brilliant XBMC/Kodi Community to keep this info updated.''\nIf any of this information is incorrect please let us know,''\n''just post a report on the forum at[/COLOR] [COLOR lime]www.totalxbmc.tv[/COLOR]\n\n\n''Supported Platforms:  '+platform+'\n\n''Addon Type:  '+addontype+'\n\n''Genre:  '+genres+'\n\n''Developer:  '+author+'\n\n''Repository:  '+repository2+'\n\n''Status:  [COLOR red]'+status+'[/COLOR]\n\n''Notes:  [COLOR yellow]'+notes+'[/COLOR]\n\n''Description:  [COLOR blue]'+description+'[/COLOR]')
+    
 def TextBoxes(heading,anounce):
   class TextBox():
     WINDOW=10147
@@ -424,27 +497,25 @@ def TextBoxes(heading,anounce):
 #-----------------------------------------------------------------------------------------------------------------    
 
 def SEARCHADDON(url):
-	searchUrl = url 
-	vq = _get_keyboard( heading="Search add-ons" )
-	# if blank or the user cancelled the keyboard, return
-	if ( not vq ): return False, 0
-	# we need to set the title to our query
-	title = urllib.quote_plus(vq)
-	searchUrl += title + '&criteria=title' 
-	print "Searching URL: " + searchUrl 
-	ADDONLIST(searchUrl)
-
-	AUTO_VIEW()
+    searchUrl = url 
+    vq = _get_keyboard( heading="Search add-ons" )
+    # if blank or the user cancelled the keyboard, return
+    if ( not vq ): return False, 0
+    # we need to set the title to our query
+    title = urllib.quote_plus(vq)
+    searchUrl += title + '&criteria=title' 
+    print "Searching URL: " + searchUrl 
+    ADDONLIST(searchUrl)
 
 #-----------------------------------------------------------------------------------------------------------------    
 
 def _get_keyboard( default="", heading="", hidden=False ):
-	""" shows a keyboard and returns a value """
-	keyboard = xbmc.Keyboard( default, heading, hidden )
-	keyboard.doModal()
-	if ( keyboard.isConfirmed() ):
-		return unicode( keyboard.getText(), "utf-8" )
-	return default
+    """ shows a keyboard and returns a value """
+    keyboard = xbmc.Keyboard( default, heading, hidden )
+    keyboard.doModal()
+    if ( keyboard.isConfirmed() ):
+        return unicode( keyboard.getText(), "utf-8" )
+    return default
 #-----------------------------------------------------------------------------------------------------------------    
   
 def OPEN_URL(url):
@@ -455,27 +526,6 @@ def OPEN_URL(url):
     response.close()
     return link.replace('\r','').replace('\n','').replace('\t','')    
 
-#-----------------------------------------------------------------------------------------------------------------
-
-def TOTALINSTALL(name, url, description, filetype, repourl):
-    path = xbmc.translatePath(os.path.join('special://home/addons','packages'))
-
-    dp   = xbmcgui.DialogProgress()
-    dp.create("First Launch:","Creating Database ",'','Only Shown on First Launch')
-
-    lib = os.path.join(path,name+'.zip')
-
-    try:    os.remove(lib)
-    except: pass
-
-    downloader.download(url, lib, dp)
-
-    if filetype == 'addon':
-        addonfolder = xbmc.translatePath(os.path.join('special://','home/addons'))
-
-    time.sleep(2)
-    extract.all(lib, addonfolder, '')
-    
 #-----------------------------------------------------------------------------------------------------------------
 
 def DEPENDINSTALL(name, url):
@@ -522,7 +572,7 @@ def DEPENDINSTALL(name, url):
 
 def ADDONINSTALL(name, url, filetype, repourl, author):
     print 'Installing Url : ' + url
-
+    xbmcgui.Dialog().ok(name, 'This addon has been coded by [COLOR=blue] '+author+' [/COLOR]. Please consider showing your appreciation on the relevant support forum.')
     confirm = xbmcgui.Dialog().yesno(name, '[COLOR=lime][B]TotalXBMC[/B][/COLOR] do not host any addons and have no affiliation with the developer(s), as such we take no responsibility for the content it provides. Please check the laws in your country before installing. Do you wish to install?')  
     if confirm == 0:
         return    
@@ -601,16 +651,15 @@ def ADDONINSTALL(name, url, filetype, repourl, author):
     xbmc.executebuiltin( 'UpdateAddonRepos' )            
     xbmc.executebuiltin( 'UpdateLocalAddons' )
     xbmcgui.Dialog().ok('Item installed successfully', 'If you like what we\'re creating at [COLOR=lime][B]totalxbmc.tv[/COLOR][/B] please come', 'and make yourself know on the forum. All donations are very', 'welcome and will go towards the running costs. Thank you!')
-	
+    
 #-----------------------------------------------------------------------------------------------------------------
-
 def UPDATEREPO():
-#    xbmc.executebuiltin( 'UpdateLocalAddons' )
+    xbmc.executebuiltin( 'UpdateLocalAddons' )
     xbmc.executebuiltin( 'UpdateAddonRepos' )    
     xbmcgui.Dialog().ok('Force Refresh Started Successfully', 'Depending on the speed of your device it could take a few minutes for the update to take effect.','','[COLOR=blue]For all your XBMC/Kodi support visit[/COLOR] [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B]')
+    return
 
 #-----------------------------------------------------------------------------------------------------------------
-
 def AUTO_VIEW(content = ''):
     if not content:
         return
@@ -625,14 +674,13 @@ def AUTO_VIEW(content = ''):
         xbmc.executebuiltin("Container.SetViewMode(%s)" % ADDON.getSetting('default-view'))
 
 #-----------------------------------------------------------------------------------------------------------------
-
-def addDir(name, url, mode, description, iconimage = ''): 
+def addDir(name, url, mode, iconimage = ''): 
     if len(iconimage) > 0:
         iconimage = ARTPATH + iconimage
     else:
         iconimage = 'DefaultFolder.png'
 
-    if url != 'none':
+    if url.lower() != 'none':
         if not url.startswith(BASEURL):
             url = BASEURL + url
 
@@ -644,15 +692,12 @@ def addDir(name, url, mode, description, iconimage = ''):
     liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
 
     liz.setProperty("Fanart_Image", FANART )
-    
-    if mode==None or mode=='videoguides' or mode=='backup_option' or mode=='restore_zip' or url==None or len(url)<1:
-        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
+    if mode == 'addonstatus' or mode == 'update' or mode == 'howto' or mode =='gotham' or mode == 'helix' or mode == 'log' or mode == 'uploadlog' or mode == 'ipcheck' or mode =='xbmcversion' or mode == 'backup' or mode =='restore' or mode =='community' or mode =='wipe':
+        addDirectoryItem(handle=int(sys.argv[1]), url=u, listitem=liz, isFolder=False)
     else:
-        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
+        addDirectoryItem(handle=int(sys.argv[1]), url=u, listitem=liz, isFolder=True)
 
-	
 #-----------------------------------------------------------------------------------------------------------------
-
 def addHELPDir(name, addontype, url, mode, iconimage, fanart, description, filetype, repourl='', version='', author=''):
         u  = sys.argv[0]
         u += "?url="         + urllib.quote_plus(url)
@@ -660,7 +705,8 @@ def addHELPDir(name, addontype, url, mode, iconimage, fanart, description, filet
         u += "&filetype="    + urllib.quote_plus(filetype)
         u += "&repourl="     + urllib.quote_plus(repourl)
         u += "&mode="        + str(mode)
-                        
+        u += "&author="      + urllib.quote_plus(author)
+                       
         liz = xbmcgui.ListItem(name+addontype, iconImage='DefaultFolder.png', thumbnailImage=iconimage)
 
         liz.setInfo(type="Video", infoLabels={ 'title': name, 'plot': description } )
@@ -717,8 +763,8 @@ def GOTHAMCONFIRM():
     if confirm == 0:
         return    
     elif confirm == 1:
-		GOTHAM()
-		
+        GOTHAM()
+        
 def GOTHAM():
     path = xbmc.translatePath(os.path.join('special://home', 'addons'))
 
@@ -737,46 +783,48 @@ def GOTHAM():
 
     dialog = xbmcgui.Dialog()
     dialog.ok("Your addons have now been made compatible", "If you still find you have addons that aren't working please run the addon so it throws up a script error, upload a log and post details on the forum at [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B] so the team can look into it. Thank you.")             
+#-----------------------------------------------------------------------------------------------------------------  
+def HELIXCONFIRM():
+    dialog = xbmcgui.Dialog()
+    confirm = xbmcgui.Dialog().yesno('Convert Addons To Kodi (Helix)', 'This will edit your addon.xml files so they show as Helix compatible. It\'s doubtful this will have any effect on whether or not they work but it will get rid of the annoying incompatible pop-up message. Do you wish to continue?')
+    if confirm == 0:
+        return    
+    elif confirm == 1:
+        HELIX()
+        
+def HELIX():
+    path = xbmc.translatePath(os.path.join('special://home', 'addons'))
+
+    import glob
+    dp = xbmcgui.DialogProgress()
+    dp.create("Kodi (Helix) Addon Fix","Please wait whilst your addons",'', 'are being made Helix compatible.')
+    for infile in glob.glob(os.path.join(path, '*.*')):
+     for file in glob.glob(os.path.join(infile, '*.*')):
+             if 'addon.xml' in file:
+                 dp.update(0,"Fixing",file, 'Please Wait')
+                 a=open(file).read()
+                 b=a.replace('addon="xbmc.python" version="1.0"','addon="xbmc.python" version="2.19.0"').replace('addon="xbmc.python" version="2.0"','addon="xbmc.python" version="2.19.0"').replace('addon="xbmc.python" version="2.1.0"','addon="xbmc.python" version="2.19.0"')
+                 f = open(file, mode='w')
+                 f.write(str(b))
+                 f.close()
+
+    dialog = xbmcgui.Dialog()
+    dialog.ok("Your addons have now been made compatible", "If you still find you have addons that aren't working please run the addon so it throws up a script error, upload a log and post details on the forum at [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B] so the team can look into it. Thank you.")             
 
 #-----------------------------------------------------------------------------------------------------------------  
-def BACKUP_OPTION():
-    addDir('[COLOR=lime][B]FULL BACKUP[/COLOR][/B]','url','backup','','Back Up Your Full System')
-    addDir('Backup Just Your Addons','addons','backup_zip','','Back Up Your Addons')
-    addDir('Backup Just Your Addon UserData','addon_data','backup_zip','','Back Up Your Addon Userdata')
-    addDir('Backup Guisettings.xml',GUI,'restore_backup_xml','','Back Up Your guisettings.xml')
-    if os.path.exists(FAVS):
-        addDir('Backup Favourites.xml',FAVS,'restore_backup_xml','','Back Up Your favourites.xml')
-    if os.path.exists(SOURCE):
-        addDir('Backup Source.xml',SOURCE,'restore_backup_xml','','Back Up Your sources.xml')
-    if os.path.exists(ADVANCED):
-        addDir('Backup Advancedsettings.xml',ADVANCED,'restore_backup_xml','','Back Up Your advancedsettings.xml')
-    if os.path.exists(KEYMAPS):
-        addDir('Backup Advancedsettings.xml',KEYMAPS,'restore_backup_xml','','Back Up Your keyboard.xml')
-    if os.path.exists(RSS):
-        addDir('Backup RssFeeds.xml',RSS,'restore_backup_xml','','Back Up Your RssFeeds.xml')    
-    if os.path.exists(os.path.join(USB,'backup.zip')):   
-        addDir('[COLOR=orange][B]FULL RESTORE[/COLOR][/B]','url','restore_zip','','Back Up Your Full System')      
-    if os.path.exists(os.path.join(USB,'addons.zip')):   
-        addDir('Restore Your Addons','addons','restore_zip','','Restore Your Addons')  
-    if os.path.exists(os.path.join(USB,'addon_data.zip')):   
-        addDir('Restore Your Addon UserData','addon_data','restore_zip','','Restore Your Addon UserData')           
-    if os.path.exists(os.path.join(USB,'guisettings.xml')):
-        addDir('Restore Guisettings.xml',GUI,'restore_backup_xml','','Restore Your guisettings.xml')
-    if os.path.exists(os.path.join(USB,'favourites.xml')):
-        addDir('Restore Favourites.xml',FAVS,'restore_backup_xml','','Restore Your favourites.xml')
-    if os.path.exists(os.path.join(USB,'sources.xml')):
-        addDir('Restore Source.xml',SOURCE,'restore_backup_xml','','Restore Your sources.xml')
-    if os.path.exists(os.path.join(USB,'advancedsettings.xml')):
-        addDir('Restore Advancedsettings.xml',ADVANCED,'restore_backup_xml','','Restore Your advancedsettings.xml')        
-    if os.path.exists(os.path.join(USB,'keyboard.xml')):
-        addDir('Restore Advancedsettings.xml',KEYMAPS,'restore_backup_xml','','Restore Your keyboard.xml')
-    if os.path.exists(os.path.join(USB,'RssFeeds.xml')):
-        addDir('Restore RssFeeds.xml',RSS,'restore_backup_xml','','Restore Your RssFeeds.xml')   
-		
-#-----------------------------------------------------------------------------------------------------------------
-		
+def XBMCVERSION(url):
+    xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
+    version=float(xbmc_version[:4])
+    if version < 14:
+	    kodiorxbmc = 'You are running XBMC'
+    else:
+        kodiorxbmc = 'You are running Kodi'
+    dialog=xbmcgui.Dialog()
+    dialog.ok(kodiorxbmc, "Your version is: %s" % version)
+        
+#-----------------------------------------------------------------------------------------------------------------  
 def addDirectoryItem(handle, url, listitem, isFolder):
-    xbmcplugin.addDirectoryItem(handle, url, listitem, isFolder=True)
+    xbmcplugin.addDirectoryItem(handle, url, listitem, isFolder)
     
 #-----------------------------------------------------------------------------------------------------------------
     
@@ -813,6 +861,7 @@ mode=None
 iconimage=None
 description=None
 author=None
+fanart=None
 
 try:    mode = urllib.unquote_plus(params['mode'])
 except: mode = None
@@ -829,7 +878,7 @@ except: type = ''
 try:    repo = urllib.unquote_plus(params['repourl'])
 except: repo = ''
 
-try:    author = urllib.unquote_plus(params['repourl'])
+try:    author = urllib.unquote_plus(params['author'])
 except: author = 'anonymous'
 
 try:    iconimage=urllib.unquote_plus(params["iconimage"])
@@ -837,6 +886,14 @@ except: pass
 
 try:    description=urllib.unquote_plus(params["description"])
 except: pass
+try:        
+        fanart=urllib.unquote_plus(params["fanart"])
+except:
+        pass
+try:        
+        special=urllib.unquote_plus(params["special"])
+except:
+        pass
 
 #print "Mode : " + str(mode)
 #print "URL  : " + str(url)
@@ -858,25 +915,26 @@ elif mode == 'repolist'           : REPOLIST(url)
 elif mode == 'addonindex'         : ADDONINDEX(  name, url, type)
 elif mode == 'addoninstall'       : ADDONINSTALL(name, url, type, repo, author)
 elif mode == 'watch_video'        : PLAYVIDEO(url)
-elif mode == 'runvids'            : UPDATEREPO()
-elif mode == 'totalvids'          : TOTALVIDS(params)
 elif mode == 'searchaddon'        : print""+url; SEARCHADDON(url)
 elif mode == 'gotham'             : GOTHAMCONFIRM()
+elif mode == 'helix'              : HELIXCONFIRM()
 elif mode == 'showinfo'           : SHOWINFO(name, version, platform, addontype, genres, author, repository1, status, notes, description, repository2)
 elif mode == 'popular'            : popularpacks.POPULAR()
-elif mode == 'popularpacks'       : popularpacks.ADDONPACKMASTER()
-elif mode == 'community'          : communitybuilds.COMMUNITY()
 elif mode == 'addonstatus'        : ADDONSTATUS(url)
-elif mode == 'videoguides'        : whufclee.main_list(url)
 elif mode == 'installerror'       : INSTALLERROR()
 elif mode == 'addonfix'           : addonfix.fixes()
-elif mode == 'backupoptions'      : BACKUP_OPTION()
-elif mode == 'backup'             : backuprestore.BACKUP()
-elif mode == 'restore'            : backuprestore.RESTORE()    
-elif mode == 'restore_backup_xml' : backuprestore.RESTORE_BACKUP_XML(name,url,description)
-elif mode == 'restore_zip'        : backuprestore.RESTORE_ZIP_FILE(url)  
-
+elif mode == 'howto'              : HOWTOGUIDES(url)
+elif mode == 'community'          : COMMUNITYBUILDS()
+elif mode == 'ipcheck'            : IPCHECK()
+elif mode == 'addonfixes'         : ADDONFIXES()
+elif mode == 'tools'              : TOOLS()
+elif mode == 'log'                : LOGVIEWER()
+elif mode == 'xbmcversion'        : XBMCVERSION(url)
+elif mode == 'backup'             : BACKUP()
+elif mode == 'restore'            : RESTORE()
+elif mode == 'wipe'               : WIPE()
+elif mode == 'speedtest'          : speedtest.menu()
 if 'repo' in name.lower() and len(repo) > 0:
     url = repo
-	
+    
 xbmcplugin.endOfDirectory(int(sys.argv[1]))

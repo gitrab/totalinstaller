@@ -2,7 +2,6 @@
 <category label="General Settings">
 	<setting type="lsep" label="Log Uploader Email"/>
     	<setting id="email" type="text" label="E-Mail Address"/>
-        <setting id="zip" type="folder"    label="Choose USB/SDCARD Destination"      default=""/>
 </category>
 		
 <category label="XBMC Categories">
