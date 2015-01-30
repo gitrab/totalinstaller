@@ -1,3 +1,6 @@
+1.1.5:
+- Quick fix for adding id.xml if one doesn't exist - accidentally pushed test version!
+
 1.1.4:
 - Fixed popup screen issue, now opens a window rather than ShowPicture()
 - Added a check to see if download location is a valid link
