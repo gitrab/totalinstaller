@@ -6,7 +6,10 @@ import extract
 import time
 import downloader
 import plugintools
+import weblogin
 
+ARTPATH    =  'http://totalxbmc.tv/totalrevolution/art/' + os.sep
+FANART     =  'http://totalxbmc.tv/totalrevolution/art/fanart.jpg'
 ADDON        =  xbmcaddon.Addon(id='plugin.program.community.builds')
 AddonID      =  'plugin.program.community.builds'
 AddonTitle   =  "[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]"
@@ -23,11 +26,100 @@ ADVANCED     =  xbmc.translatePath(os.path.join(USERDATA,'advancedsettings.xml')
 RSS          =  xbmc.translatePath(os.path.join(USERDATA,'RssFeeds.xml'))
 KEYMAPS      =  xbmc.translatePath(os.path.join(USERDATA,'keymaps','keyboard.xml'))
 USB          =  xbmc.translatePath(os.path.join(zip))
+cookiepath   =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'cookiejar'))
+startuppath  =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'startup.xml'))
+tempfile     =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'temp.xml'))
+idfile       =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'id.xml'))
+notifyart    =  xbmc.translatePath(os.path.join(ADDONS,AddonID,'resources/'))
 skin         =  xbmc.getSkinDir()
-
+EXCLUDES     =  ['plugin.program.community.builds','TestFolderNameWithAfileInside']
+username     =  ADDON.getSetting('username')
+password     =  ADDON.getSetting('password')
+login        =  ADDON.getSetting('login')
+userdatafolder = xbmc.translatePath(os.path.join(ADDON_DATA,AddonID))
 
 #-----------------------------------------------------------------------------------------------------------------    
-            
+#Simple shortcut to create a notification
+def Notify(title,message,times,icon):
+    icon = notifyart+icon
+    print "icon: "+str(icon)
+    xbmc.executebuiltin("XBMC.Notification("+title+","+message+","+times+","+icon+")")
+
+#-----------------------------------------------------------------------------------------------------------------    
+#Popup class - thanks to whoever codes the help popup in TVAddons Maintenance for this section. Unfortunately there doesn't appear to be any author details in that code so unable to credit by name.
+class SPLASH(xbmcgui.WindowXMLDialog):
+    def __init__(self,*args,**kwargs): self.shut=kwargs['close_time']; xbmc.executebuiltin("Skin.Reset(AnimeWindowXMLDialogClose)"); xbmc.executebuiltin("Skin.SetBool(AnimeWindowXMLDialogClose)")
+    def onFocus(self,controlID): pass
+    def onClick(self,controlID): 
+        if controlID==12: xbmc.Player().stop(); self._close_dialog()
+    def onAction(self,action):
+        if action in [5,6,7,9,10,92,117] or action.getButtonCode() in [275,257,261]: xbmc.Player().stop(); self._close_dialog()
+    def _close_dialog(self):
+        xbmc.executebuiltin("Skin.Reset(AnimeWindowXMLDialogClose)"); time.sleep( .4 ); self.close()
+#-----------------------------------------------------------------------------------------------------------------    
+#Set popup xml based on platform
+def pop():
+    popup=SPLASH('totalxbmc.xml',ADDON.getAddonInfo('path'),'DefaultSkin',close_time=34)
+    popup.doModal()
+    del popup
+#-----------------------------------------------------------------------------------------------------------------    
+#Initial online check for new video
+def VideoCheck():
+    import yt
+    if not os.path.exists(userdatafolder):
+        os.makedirs(userdatafolder)
+    if not os.path.exists(startuppath):
+        localfile = open(startuppath, mode='w+')
+        localfile.write('date="01011001"version="0.0"')
+        localfile.close()
+    BaseURL='http://totalxbmc.tv/totalrevolution/Community_Builds/update.txt'
+    link = OPEN_URL(BaseURL).replace('\n','').replace('\r','')
+    datecheckmatch = re.compile('date="(.+?)"').findall(link)
+    videomatch = re.compile('video="https://www.youtube.com/watch\?v=(.+?)"').findall(link)
+#    splashmatch = re.compile('splash="(.+?)"').findall(link)
+#    splashmatch2 = re.compile('splash2="(.+?)"').findall(link)
+    datecheck  = datecheckmatch[0] if (len(datecheckmatch) > 0) else ''
+    videocheck  = videomatch[0] if (len(videomatch) > 0) else ''
+#    splashcheck  = splashmatch[0] if (len(splashmatch) > 0) else ''
+#    splashcheck2  = splashmatch2[0] if (len(splashmatch2) > 0) else ''
+
+    localfile = open(startuppath, mode='r')
+    content = file.read(localfile)
+    file.close(localfile)
+    localdatecheckmatch = re.compile('date="(.+?)"').findall(content)
+    localdatecheck  = localdatecheckmatch[0] if (len(localdatecheckmatch) > 0) else ''
+    localversionmatch = re.compile('version="(.+?)"').findall(content)
+    localversioncheck  = localversionmatch[0] if (len(localversionmatch) > 0) else ''
+    localfile2 = open(idfile, mode='r')
+    content2 = file.read(localfile2)
+    file.close(localfile2)
+    localidmatch = re.compile('id="(.+?)"').findall(content2)
+    localidcheck  = localidmatch[0] if (len(localidmatch) > 0) else ''
+    localbuildmatch = re.compile('name="(.+?)"').findall(content)
+    localbuildcheck  = localbuildmatch[0] if (len(localbuildmatch) > 0) else ''
+    if  int(localdatecheck) < int(datecheck):
+        replacefile = content.replace(localdatecheck,datecheck)
+        writefile = open(startuppath, mode='w')
+        writefile.write(str(replacefile))
+        writefile.close()
+        yt.PlayVideo(videocheck, forcePlayer=True)
+        xbmc.sleep(500)
+        while xbmc.Player().isPlaying():
+            xbmc.sleep(500)
+    else:
+        pass
+    logged_in = weblogin.doLogin(cookiepath,username,password)
+    if login == 'true':
+        if logged_in == True:
+            Notify('Login Successful', 'Welcome back '+username,'4000','tick.png')
+        elif logged_in == False:
+            dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','There is an error with your login information, please check','your username and password, remember this is case','sensitive so use capital letters where needed.')
+            ADDON.openSettings(sys.argv[0])
+    else:
+        pop()
+    CATEGORIES(localbuildcheck,localversioncheck,localidcheck)
+#-----------------------------------------------------------------------------------------------------------------    
+#Function to create a text box
 def TextBoxes(heading,anounce):
   class TextBox():
     WINDOW=10147
@@ -44,13 +136,15 @@ def TextBoxes(heading,anounce):
       except: text=anounce
       self.win.getControl(self.CONTROL_TEXTBOX).setText(str(text))
       return
-  TextBox()  
-
+  TextBox()
 #---------------------------------------------------------------------------------------------------
-
+#Backup the full XBMC system
 def BACKUP():  
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
+        ADDON.openSettings(sys.argv[0])
+    if not os.path.exists(zip):
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
         ADDON.openSettings(sys.argv[0])
     to_backup = xbmc.translatePath(os.path.join('special://','home'))
     backup_zip = xbmc.translatePath(os.path.join(USB,'backup.zip'))
@@ -89,9 +183,8 @@ def BACKUP():
     zipobj.close()
     dp.close()
     dialog.ok("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] Community Builds[/B]", 'You Are Now Backed Up. If you\'d like to share this build with', 'the community please post details on the forum at', '[COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B]')
-    
 #---------------------------------------------------------------------------------------------------
-      
+#Read a zip file and extract the relevant data
 def READ_ZIP(url):
 
     import zipfile
@@ -136,21 +229,71 @@ def READ_ZIP(url):
             a = z.read(filename)
             f = open(KEYMAPS, mode='w')
             f.write(a)
-            f.close()                 
-              
+            f.close()                              
 #---------------------------------------------------------------------------------------------------
-
-def COMMUNITY():
+#Function to populate the search based on the initial first filter
+def COMMUNITY(url):
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your backup storage folder.\nPlease update the addon settings and try again.','','')
         ADDON.openSettings(sys.argv[0])
-    link = OPEN_URL('http://totalxbmc.tv/totalrevolution/Community_Builds/community_builds.txt').replace('\n','').replace('\r','')
-    match = re.compile('name="(.+?)".+?rl="(.+?)".+?mg="(.+?)".+?anart="(.+?)"video="(.+?)".+?escription="(.+?)"').findall(link)
-    for name,url,iconimage,fanart,video,description in match:
-        addDir(name,url,11,iconimage,fanart,video,description)
-    
-#---------------------------------------------------------------------------------------------------
+    if not os.path.exists(zip):
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
+        ADDON.openSettings(sys.argv[0])
+    username = ADDON.getSetting('username')
+    password = ADDON.getSetting('password')
+    xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
+    version=float(xbmc_version[:4])
+    if version < 14:
+        xbmcversion = 'gotham'
+    else:
+        xbmcversion = 'helix'
 
+    if ADDON.getSetting('adult') == 'true':
+        adult = ''
+    else:
+        adult = 'no'
+    buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortbyname.php?xbmc=%s&adult=%s&%s' % (xbmcversion, adult, url)           
+    link = OPEN_URL(buildsURL).replace('\n','').replace('\r','')
+#    addBuildDir('[COLOR=lime]Add another filter to the search[/COLOR]',buildsURL,'genres2','genres.png','','','')
+    match=re.compile('name="(.+?)"  <br> id="(.+?)"  <br> Thumbnail="(.+?)"  <br> Fanart="(.+?)"', re.DOTALL).findall(link)
+    for name,url,iconimage,fanart in match:
+        addBuildDir(name,url,'community_menu',iconimage,fanart,'','')
+#---------------------------------------------------------------------------------------------------
+#Function to populate the search based on a second filter
+def COMMUNITY2(url):
+    print "COM2 START URL::"+str(url)
+    link = OPEN_URL(url).replace('\n','').replace('\r','')
+    match=re.compile('name="(.+?)"  <br> id="(.+?)"  <br> Thumbnail="(.+?)"  <br> Fanart="(.+?)"', re.DOTALL).findall(link)
+    addBuildDir('[COLOR=lime]Add another filter to the search[/COLOR]',url,'genres2','genres.png','','','')
+    for name,url,iconimage,fanart in match:
+        addBuildDir(name,url,'community_menu',iconimage,fanart,'','')
+#---------------------------------------------------------------------------------------------------
+#Function to populate the search based on the initial first filter
+def COMMUNITY_SEARCH(url):
+    if zip == '':
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your backup storage folder.\nPlease update the addon settings and try again.','','')
+        ADDON.openSettings(sys.argv[0])
+    username = ADDON.getSetting('username')
+    password = ADDON.getSetting('password')
+    xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
+    version=float(xbmc_version[:4])
+    if version < 14:
+        xbmcversion = 'gotham'
+    else:
+        xbmcversion = 'helix'
+
+    if ADDON.getSetting('adult') == 'true':
+        adult = ''
+    else:
+        adult = 'no'
+    buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortbyname.php?xbmc=%s&adult=%s&%s&genre=' % (xbmcversion, adult, url)           
+    link = OPEN_URL(buildsURL).replace('\n','').replace('\r','')
+    addBuildDir('[COLOR=lime]Add another filter to the search[/COLOR]',buildsURL,'genres2','genres.png','','','')
+    match=re.compile('name="(.+?)"  <br> id="(.+?)"  <br> Thumbnail="(.+?)"  <br> Fanart="(.+?)"', re.DOTALL).findall(link)
+    for name,url,iconimage,fanart in match:
+        addBuildDir(name,url,'community_menu',iconimage,fanart,'','')
+#---------------------------------------------------------------------------------------------------
+#Function to read the contents of a URL
 def OPEN_URL(url):
     req = urllib2.Request(url)
     req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
@@ -158,9 +301,8 @@ def OPEN_URL(url):
     link=response.read()
     response.close()
     return link
-
 #---------------------------------------------------------------------------------------------------
-
+#Function to restore a community build
 def RESTORE_COMMUNITY(name,url,description):
     import time
     myplatform = platform()
@@ -168,36 +310,52 @@ def RESTORE_COMMUNITY(name,url,description):
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
         ADDON.openSettings(sys.argv[0])
+    if not os.path.exists(zip):
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
+        ADDON.openSettings(sys.argv[0])
     choice = xbmcgui.Dialog().yesno(name, 'We highly recommend backing up your existing build before', 'installing any community builds.', 'Are you sure you want to install this build?', nolabel='Cancel',yeslabel='Install')
     if choice == 0:
         return
     elif choice == 1:
-        if myplatform != 'android':
-            choice2 = xbmcgui.Dialog().yesno(name, 'Would you like to merge your existing build', 'or wipe your existing data and have a fresh', 'install with this new build?', nolabel='Merge',yeslabel='Wipe')
-            if choice2 == 0: pass
-            elif choice2 == 1: WipeInstall()
+#        if myplatform != 'android':
+        choice2 = xbmcgui.Dialog().yesno(name, 'Would you like to merge your existing build', 'or wipe your existing data and have a fresh', 'install with this new build?', nolabel='Merge',yeslabel='Wipe')
+        if choice2 == 0: pass
+        elif choice2 == 1: WipeInstall()
 #        addonfolder = xbmc.translatePath(os.path.join('special://','home'))
         dp = xbmcgui.DialogProgress()
-        dp.create("Community Builds","Downloading "+name +" build.",'', 'Please Wait')
+        dp.create("Community Builds","Downloading "+description +" build.",'', 'Please Wait')
         lib=os.path.join(zip, 'community.zip')
         try: os.remove(lib)
         except: pass
-        downloader.download(url, lib, dp)
-        READ_ZIP(lib)
-        dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
-        HOME = xbmc.translatePath(os.path.join('special://','home')) 
-        dp.update(0,"", "Extracting Zip Please Wait")
-        extract.all(lib,HOME,dp)
-        time.sleep(1)
-        dialog.ok("Community Builds - Install Complete", 'To ensure the skin settings are set correctly XBMC will now', 'close. If XBMC doesn\'t close please force close (pull power', 'or force close in your OS - [COLOR=lime]DO NOT exit via XBMC menu[/COLOR])')
-        killxbmc()
+        # downloader.download(url, lib, dp)
+        # READ_ZIP(lib)
+        # dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
+        # HOME = xbmc.translatePath(os.path.join('special://','home')) 
+        # dp.update(0,"", "Extracting Zip Please Wait")
+        # extract.all(lib,HOME,dp)
+        # time.sleep(1)
+        # dialog.ok("Community Builds - Install Complete", 'To ensure the skin settings are set correctly XBMC will now', 'close. If XBMC doesn\'t close please force close (pull power', 'or force close in your OS - [COLOR=lime]DO NOT exit via XBMC menu[/COLOR])')
+        localfile = open(tempfile, mode='r')
+        content = file.read(localfile)
+        file.close(localfile)
+        temp = re.compile('id="(.+?)"').findall(content)
+        tempcheck  = temp[0] if (len(temp) > 0) else ''
+        tempname = re.compile('name="(.+?)"').findall(content)
+        namecheck  = tempname[0] if (len(tempname) > 0) else ''
+        writefile = open(idfile, mode='w+')
+        writefile.write('id="'+str(tempcheck)+'"name="'+namecheck+'"')
+        writefile.close()
+#       killxbmc()
 #---------------------------------------------------------------------------------------------------
-        
+#Function to restore a zip file 
 def RESTORE():
     import time
     dialog = xbmcgui.Dialog()
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
+        ADDON.openSettings(sys.argv[0])
+    if not os.path.exists(zip):
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
         ADDON.openSettings(sys.argv[0])
         
     lib=xbmc.translatePath(os.path.join(zip,'backup.zip'))
@@ -211,21 +369,19 @@ def RESTORE():
     dialog.ok("Community Builds - Install Complete", 'To ensure the skin settings are set correctly XBMC will now', 'close. If XBMC doesn\'t close please force close (pull power', 'or force close in your OS - [COLOR=lime]DO NOT exit via XBMC menu[/COLOR])')
     killxbmc()
 #---------------------------------------------------------------------------------------------------
-        
-# Kill Commands - these will make sure guisettings.xml sticks
+#Kill Commands - these will make sure guisettings.xml sticks.
+#ANDROID STILL NOT WORKING
 def killxbmc():
     myplatform = platform()
     print "Platform: " + str(myplatform)
-#OSX
-    if myplatform == 'osx':
+    if myplatform == 'osx': # OSX
         print "############   try osx force close  #################"
         try: os.system('killall -9 XBMC')
         except: pass
         try: os.system('killall -9 Kodi')
         except: pass
         dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.",'')        
-#Linux
-    elif myplatform == 'linux':
+    elif myplatform == 'linux': #Linux
         print "############   try linux force close  #################"
         try: os.system('killall XBMC')
         except: pass
@@ -233,23 +389,21 @@ def killxbmc():
         except: pass
         try: os.system('killall -9 xbmc.bin')
         except: pass
-        try: os.system('killall -9 Kodi.bin')
+        try: os.system('killall -9 kodi.bin')
         except: pass
-        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.",'')        
-# Android       
-    elif myplatform == 'android':
+        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.",'')
+    elif myplatform == 'android': # Android  
         print "############   try android force close  #################"
-        try: os.system('adb shell am force-stop org.Kodi.Kodi')
+        try: os.system('adb shell am force-stop org.xbmc.kodi')
         except: pass
-        try: os.system('adb shell am force-stop org.Kodi')
+        try: os.system('adb shell am force-stop org.kodi')
         except: pass
         try: os.system('adb shell am force-stop org.xbmc.xbmc')
         except: pass
         try: os.system('adb shell am force-stop org.xbmc')
         except: pass        
-        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.","Your system has been detected as Android, just pull the power cable.")
-# Windows
-    elif myplatform == 'windows':
+        dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "Your system has been detected as Android, you ", "[COLOR=yellow][B]MUST[/COLOR][/B] force close XBMC/Kodi. [COLOR=lime]DO NOT[/COLOR] exit via the menu.","Pulling the power cable is the simplest method to force close.")
+    elif myplatform == 'windows': # Windows
         print "############   try windows force close  #################"
         try:
             os.system('@ECHO off')
@@ -268,49 +422,291 @@ def killxbmc():
             os.system('TASKKILL /im XBMC.exe /f')
         except: pass
         dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.","Your system has been detected as Windows so use ALT + F4.")
-
-# Possible alternative for older builds - windows tskill XBMC.exe
-#ATV
-    else:
+    else: #ATV
         print "############   try atv force close  #################"
         try: os.system('killall AppleTV')
         except: pass
-#OSMC / Raspbmc
-        print "############   try raspbmc force close  #################"
-        try: os.system('sudo initctl stop Kodi')
+        print "############   try raspbmc force close  #################" #OSMC / Raspbmc
+        try: os.system('sudo initctl stop kodi')
         except: pass
         try: os.system('sudo initctl stop xbmc')
         except: pass
         dialog.ok("[COLOR=red][B]W A R N I N G   ! ! ![/COLOR][/B]", "If you\'re seeing this message it means the force close", "was unsuccessful. Please force close XBMC/Kodi [COLOR=lime]DO NOT[/COLOR] exit via the menu.","Your platform could not be detected so just pull the power cable.")
+#---------------------------------------------------------------------------------------------------
+#Root menu of addon
+def CATEGORIES(localbuildcheck,localversioncheck,id):
+#    if localbuildcheck != 'None':
+#        Check_For_Update(localbuildcheck,localversioncheck,id)
+ #       addDir('[COLOR=gold]Current Build Installed: [/COLOR]'+localbuildcheck,'url','instructions','How_To.png','','','Instructions')
+    addDir('[COLOR=dodgerblue]How To Use This Addon[/COLOR]','url','instructions','How_To.png','','','Instructions')
+    addDir('[COLOR=lime]Install Community Build[/COLOR]','none','cb_root_menu','Community_Builds.png','','','Install Community Build')
+    addDir('Backup My Content','url','backup_option','Backup.png','','','Back Up Your Data')
+    addDir('Restore My Content','url','restore_option','Restore.png','','','Restore Your Data')
+    addDir('Wipe My Setup (Fresh Start)','url','wipe_xbmc','Fresh_Start.png','','','Wipe your special XBMC/Kodi directory which will revert back to a vanillla build.')
+#---------------------------------------------------------------------------------------------------
+# Check local file version name and number against db
+def Check_For_Update(localbuildcheck,localversioncheck,id):
+    BaseURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/buildupdate.php?id=%s' % (id)
+    link = OPEN_URL(BaseURL).replace('\n','').replace('\r','')
+    versioncheckmatch = re.compile('version="(.+?)"').findall(link)
+    namematch = re.compile('name="(.+?)"').findall(link)
+    versioncheck  = versioncheckmatch[0] if (len(versioncheckmatch) > 0) else ''
+    namecheck  = namematch[0] if (len(namematch) > 0) else ''
+    print localversioncheck
+    print versioncheck
+    if  float(localversioncheck) < float(versioncheck):
+        print "new version available"
+    else:
+        print "all good in the hood"
+#---------------------------------------------------------------------------------------------------
+#Build the root search menu for installing community builds
+def CB_Root_Menu():
+    logged_in = weblogin.doLogin(cookiepath,username,password)
+    xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
+    version=float(xbmc_version[:4])
+    if login == 'true':
+        if logged_in == True:
+            addDir('Manual Search','url','manual_search','Manual_Search.png','','','')
+            addDir('Search By Genre','url','genres','Search_Genre.png','','','')
+            addDir('Search By Country/Language','url','countries','Search_Country.png','','','')
+            if version < 14:
+                addDir('Show All Gotham Compatible Builds','genre=','grab_builds','TRCOMMUNITYGOTHAMBUILDS.png','','','')
+            else:
+                addDir('Show All Helix Compatible Builds','genre=','grab_builds','TRCOMMUNITYHELIXBUILDS.png','','','')
+        elif logged_in == False:
+            dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','There is an error with your login information, please check','your username and password, remember this is case','sensitive so use capital letters where needed.')
+            ADDON.openSettings(sys.argv[0])
+    else:
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','[COLOR=blue][B]Did you know you\'re missing out of some great features?[/B][/COLOR]','To unlock this content simply register on the forum for [COLOR=yellow]FREE[/COLOR]','at [COLOR=lime]www.totalxbmc.tv[/COLOR] and enter details in the addon settings.')
+        if version < 14:
+            addDir('Show All Gotham Compatible Builds','genre=','grab_builds','TRCOMMUNITYGOTHAMBUILDS.png','','','')
+        else:
+            addDir('Show All Helix Compatible Builds','genre=','grab_builds','TRCOMMUNITYHELIXBUILDS.png','','','')
         
 #---------------------------------------------------------------------------------------------------
-    
-    
-def CATEGORIES():
-    addDir('[COLOR=dodgerblue]How To Use This Addon[/COLOR]','url',13,'','','','Instructions')
-    addDir('[COLOR=lime]Install Community Build[/COLOR]','url',8,'','','','Install Community Build')
-    addDir('Backup My Content','url',1,'','','','Back Up Your Data')
-    addDir('Restore My Content','url',5,'','','','Restore Your Data')
-    addDir('Wipe My Setup (Fresh Start)','url',9,'','','','Wipe your special XBMC/Kodi directory which will revert back to a vanillla build.')
-
+#Search in description
+def MANUAL_SEARCH():
+    addDir('Search By Name','name','search_builds','Manual_Search.png','','','')
+    addDir('Search By Uploader','author','search_builds','Search_Genre.png','','','')
+    addDir('Search By Audio Addons Installed','audio','search_builds','Search_Addons.png','','','')
+    addDir('Search By Picture Addons Installed','pics','search_builds','Search_Addons.png','','','')
+    addDir('Search By Program Addons Installed','progs','search_builds','Search_Addons.png','','','')
+    addDir('Search By Video Addons Installed','vids','search_builds','Search_Addons.png','','','')
+    addDir('Search By Skins Installed','vids','search_builds','Search_Addons.png','','','')
 #---------------------------------------------------------------------------------------------------
+#Search in description
+def SEARCH_BUILDS():
+    if url == 'name':
+        searchUrl = 'name='
+    elif url == 'author':
+        searchUrl = 'author='
+    elif url == 'audio':
+        searchUrl = 'audio='
+    elif url == 'pics':
+        searchUrl = 'pics='
+    elif url == 'progs':
+        searchUrl = 'progs='
+    elif url == 'vids':
+        searchUrl = 'vids='
+    elif url == 'skins':
+        searchUrl = 'skins='
+    vq = _get_keyboard( heading="Search for content" )
+    # if blank or the user cancelled the keyboard, return
+    if ( not vq ): return False, 0
+    # we need to set the title to our query
+    title = urllib.quote_plus(vq)
+    searchUrl += title
+    print "Searching URL: " + searchUrl 
+    COMMUNITY_SEARCH(searchUrl)
+#---------------------------------------------------------------------------------------------------
+#Get keyboard
+def _get_keyboard( default="", heading="", hidden=False ):
+    """ shows a keyboard and returns a value """
+    keyboard = xbmc.Keyboard( default, heading, hidden )
+    keyboard.doModal()
+    if ( keyboard.isConfirmed() ):
+        return unicode( keyboard.getText(), "utf-8" )
+    return default
+#-----------------------------------------------------------------------------------------------------------------    
+#Build Genres Menu (First Filter)
+def GENRES():       
+    addDir('Anime','genre=anime','grab_builds','anime.png','','','')
+    addDir('Audiobooks','genre=audiobooks','grab_builds','audiobooks.png','','','')
+    addDir('Comedy','genre=comedy','grab_builds','comedy.png','','','')
+    addDir('Comics','genre=comics','grab_builds','comics.png','','','')
+    addDir('Documentary','genre=documentary','grab_builds','documentary.png','','','')
+    addDir('Downloads','genre=downloads','grab_builds','downloads.png','','','')
+    addDir('Food','genre=food','grab_builds','food.png','','','')
+    addDir('Gaming','genre=gaming','grab_builds','gaming.png','','','')
+    addDir('Health','genre=health','grab_builds','health.png','','','')
+    addDir('How To...','genre=howto','grab_builds','howto.png','','','')
+    addDir('Kids','genre=kids','grab_builds','kids.png','','','')
+    addDir('Live TV','genre=livetv','grab_builds','livetv.png','','','')
+    addDir('Movies','genre=movies','grab_builds','movies.png','','','')
+    addDir('Music','genre=music','grab_builds','music.png','','','')
+    addDir('News','genre=news','grab_builds','news.png','','','')
+    addDir('Photos','genre=photos','grab_builds','photos.png','','','')
+    addDir('Podcasts','genre=podcasts','grab_builds','podcasts.png','','','')
+    addDir('Radio','genre=radio','grab_builds','radio.png','','','')
+    addDir('Religion','genre=religion','grab_builds','religion.png','','','')
+    addDir('Space','genre=space','grab_builds','space.png','','','')
+    addDir('Sports','genre=sports','grab_builds','sports.png','','','')
+    addDir('Technology','genre=tech','grab_builds','tech.png','','','')
+    addDir('Trailers','genre=trailers','grab_builds','trailers.png','','','')
+    addDir('TV Shows','genre=tv','grab_builds','tv.png','','','')
+    addDir('Misc.','genre=other','grab_builds','other.png','','','')
+    if ADDON.getSetting('adult') == 'true':
+        addDir('XXX','genre=adult','grab_builds','adult.png','','','')
+#---------------------------------------------------------------------------------------------------
+#Build Countries Menu (First Filter)    
+def COUNTRIES():       
+    addDir('African','genre=african','grab_builds','african.png','','','')
+    addDir('Arabic','genre=arabic','grab_builds','arabic.png','','','')
+    addDir('Asian','genre=asian','grab_builds','asian.png','','','')
+    addDir('Australian','genre=australian','grab_builds','australian.png','','','')
+    addDir('Austrian','genre=austrian','grab_builds','austrian.png','','','')
+    addDir('Belgian','genre=belgian','grab_builds','belgian.png','','','')
+    addDir('Brazilian','genre=brazilian','grab_builds','brazilian.png','','','')
+    addDir('Canadian','genre=canadian','grab_builds','canadian.png','','','')
+    addDir('Columbian','genre=columbian','grab_builds','columbian.png','','','')
+    addDir('Czech','genre=czech','grab_builds','czech.png','','','')
+    addDir('Danish','genre=danish','grab_builds','danish.png','','','')
+    addDir('Dominican','genre=dominican','grab_builds','dominican.png','','','')
+    addDir('Dutch','genre=dutch','grab_builds','dutch.png','','','')
+    addDir('Egyptian','genre=egyptian','grab_builds','egyptian.png','','','')
+    addDir('Filipino','genre=filipino','grab_builds','filipino.png','','','')
+    addDir('Finnish','genre=finnish','grab_builds','finnish.png','','','')
+    addDir('French','genre=french','grab_builds','french.png','','','')
+    addDir('German','genre=german','grab_builds','german.png','','','')
+    addDir('Greek','genre=greek','grab_builds','greek.png','','','')
+    addDir('Hebrew','genre=hebrew','grab_builds','hebrew.png','','','')
+    addDir('Hungarian','genre=hungarian','grab_builds','hungarian.png','','','')
+    addDir('Icelandic','genre=icelandic','grab_builds','icelandic.png','','','')
+    addDir('Indian','genre=indian','grab_builds','indian.png','','','')
+    addDir('Irish','genre=irish','grab_builds','irish.png','','','')
+    addDir('Italian','genre=italian','grab_builds','italian.png','','','')
+    addDir('Japanese','genre=japanese','grab_builds','japanese.png','','','')
+    addDir('Korean','genre=korean','grab_builds','korean.png','','','')
+    addDir('Lebanese','genre=lebanese','grab_builds','lebanese.png','','','')
+    addDir('Mongolian','genre=mongolian','grab_builds','mongolian.png','','','')
+    addDir('Nepali','genre=nepali','grab_builds','nepali.png','','','')
+    addDir('New Zealand','genre=newzealand','grab_builds','newzealand.png','','','')
+    addDir('Norwegian','genre=norwegian','grab_builds','norwegian.png','','','')
+    addDir('Pakistani','genre=pakistani','grab_builds','pakistani.png','','','')
+    addDir('Polish','genre=polish','grab_builds','polish.png','','','')
+    addDir('Portuguese','genre=portuguese','grab_builds','portuguese.png','','','')
+    addDir('Romanian','genre=romanian','grab_builds','romanian.png','','','')
+    addDir('Russian','genre=russian','grab_builds','russian.png','','','')
+    addDir('Singapore','genre=singapore','grab_builds','singapore.png','','','')
+    addDir('Spanish','genre=spanish','grab_builds','spanish.png','','','')
+    addDir('Swedish','genre=swedish','grab_builds','swedish.png','','','')
+    addDir('Swiss','genre=swiss','grab_builds','swiss.png','','','')
+    addDir('Syrian','genre=syrian','grab_builds','syrian.png','','','')
+    addDir('Tamil','genre=tamil','grab_builds','tamil.png','','','')
+    addDir('Thai','genre=thai','grab_builds','thai.png','','','')
+    addDir('Turkish','genre=turkish','grab_builds','turkish.png','','','')
+    addDir('UK','genre=uk','grab_builds','uk.png','','','')
+    addDir('USA','&genre=usa','grab_builds','usa.png','','','')
+    addDir('Vietnamese','genre=vietnamese','grab_builds','vietnamese.png','','','')
+#---------------------------------------------------------------------------------------------------
+#Build Countries and Genre Menu (Second Filter)    
+def GENRES2(url):       
+    addDir('[COLOR=lime]GENRES[/COLOR]','None','None','genres.png','','','')
+    addDir('Anime',url+',anime','grab_builds2','anime.png','','','')
+    addDir('Audiobooks',url+',audiobooks','grab_builds2','audiobooks.png','','','')
+    addDir('Comedy',url+',comedy','grab_builds2','comedy.png','','','')
+    addDir('Comics',url+',comics','grab_builds2','comics.png','','','')
+    addDir('Documentary',url+',documentary','grab_builds2','documentary.png','','','')
+    addDir('Downloads',url+',downloads','grab_builds2','downloads.png','','','')
+    addDir('Food',url+',food','grab_builds2','food.png','','','')
+    addDir('Gaming',url+',gaming','grab_builds2','gaming.png','','','')
+    addDir('Health',url+',health','grab_builds2','health.png','','','')
+    addDir('How To...',url+',howto','grab_builds2','howto.png','','','')
+    addDir('Kids',url+',kids','grab_builds2','kids.png','','','')
+    addDir('Live TV',url+',livetv','grab_builds2','livetv.png','','','')
+    addDir('Movies',url+',movies','grab_builds2','movies.png','','','')
+    addDir('Music',url+',music','grab_builds2','music.png','','','')
+    addDir('News',url+',news','grab_builds2','news.png','','','')
+    addDir('Photos',url+',photos','grab_builds2','photos.png','','','')
+    addDir('Podcasts',url+',podcasts','grab_builds2','podcasts.png','','','')
+    addDir('Radio',url+',radio','grab_builds2','radio.png','','','')
+    addDir('Religion',url+',religion','grab_builds2','religion.png','','','')
+    addDir('Space',url+',space','grab_builds2','space.png','','','')
+    addDir('Sports',url+',sports','grab_builds2','sports.png','','','')
+    addDir('Technology',url+',tech','grab_builds2','tech.png','','','')
+    addDir('Trailers',url+',trailers','grab_builds2','trailers.png','','','')
+    addDir('TV Shows',url+',tv','grab_builds2','tv.png','','','')
+    addDir('Misc.',url+',other','grab_builds2','other.png','','','')
+    if ADDON.getSetting('adult') == 'true':
+        addDir('XXX','genre2=adult','grab_builds2','adult.png','','','')
+    addDir('[COLOR=lime]COUNTRIES[/COLOR]','None','None','countries.png','','','')
+    addDir('African',url+',african','grab_builds2','african.png','','','')
+    addDir('Arabic',url+',arabic','grab_builds2','arabic.png','','','')
+    addDir('Asian',url+',asian','grab_builds2','asian.png','','','')
+    addDir('Australian',url+',australian','grab_builds2','australian.png','','','')
+    addDir('Austrian',url+',austrian','grab_builds2','austrian.png','','','')
+    addDir('Belgian',url+',belgian','grab_builds2','belgian.png','','','')
+    addDir('Brazilian',url+',brazilian','grab_builds2','brazilian.png','','','')
+    addDir('Canadian',url+',canadian','grab_builds2','canadian.png','','','')
+    addDir('Columbian',url+',columbian','grab_builds2','columbian.png','','','')
+    addDir('Czech',url+',czech','grab_builds2','czech.png','','','')
+    addDir('Danish',url+',danish','grab_builds2','danish.png','','','')
+    addDir('Dominican',url+',dominican','grab_builds2','dominican.png','','','')
+    addDir('Dutch',url+',dutch','grab_builds2','dutch.png','','','')
+    addDir('Egyptian',url+',egyptian','grab_builds2','egyptian.png','','','')
+    addDir('Filipino',url+',filipino','grab_builds2','filipino.png','','','')
+    addDir('Finnish',url+',finnish','grab_builds2','finnish.png','','','')
+    addDir('French',url+',french','grab_builds2','french.png','','','')
+    addDir('German',url+',german','grab_builds2','german.png','','','')
+    addDir('Greek',url+',greek','grab_builds2','greek.png','','','')
+    addDir('Hebrew',url+',hebrew','grab_builds2','hebrew.png','','','')
+    addDir('Hungarian',url+',hungarian','grab_builds2','hungarian.png','','','')
+    addDir('Icelandic',url+',icelandic','grab_builds2','icelandic.png','','','')
+    addDir('Indian',url+',indian','grab_builds2','indian.png','','','')
+    addDir('Irish',url+',irish','grab_builds2','irish.png','','','')
+    addDir('Italian',url+',italian','grab_builds2','italian.png','','','')
+    addDir('Japanese',url+',japanese','grab_builds2','japanese.png','','','')
+    addDir('Korean',url+',korean','grab_builds2','korean.png','','','')
+    addDir('Lebanese',url+',lebanese','grab_builds2','lebanese.png','','','')
+    addDir('Mongolian',url+',mongolian','grab_builds2','mongolian.png','','','')
+    addDir('Nepali',url+',nepali','grab_builds2','nepali.png','','','')
+    addDir('New Zealand',url+',newzealand','grab_builds2','newzealand.png','','','')
+    addDir('Norwegian',url+',norwegian','grab_builds2','norwegian.png','','','')
+    addDir('Pakistani',url+',pakistani','grab_builds2','pakistani.png','','','')
+    addDir('Polish',url+',polish','grab_builds2','polish.png','','','')
+    addDir('Portuguese',url+',portuguese','grab_builds2','portuguese.png','','','')
+    addDir('Romanian',url+',romanian','grab_builds2','romanian.png','','','')
+    addDir('Russian',url+',russian','grab_builds2','russian.png','','','')
+    addDir('Singapore',url+',singapore','grab_builds2','singapore.png','','','')
+    addDir('Spanish',url+',spanish','grab_builds2','spanish.png','','','')
+    addDir('Swedish',url+',swedish','grab_builds2','swedish.png','','','')
+    addDir('Swiss',url+',swiss','grab_builds2','swiss.png','','','')
+    addDir('Syrian',url+',syrian','grab_builds2','syrian.png','','','')
+    addDir('Tamil',url+',tamil','grab_builds2','tamil.png','','','')
+    addDir('Thai',url+',thai','grab_builds2','thai.png','','','')
+    addDir('Turkish',url+',turkish','grab_builds2','turkish.png','','','')
+    addDir('UK',url+',uk','grab_builds2','uk.png','','','')
+    addDir('USA',url+',usa','grab_builds2','usa.png','','','')
+    addDir('Vietnamese',url+',vietnamese','grab_builds2','vietnamese.png','','','')
+#---------------------------------------------------------------------------------------------------
+#Call the yt module for playing videos. Thanks to spoyser for this module.
 def PLAYVIDEO(url):
     import yt    
     yt.PlayVideo(url)
-    
 #---------------------------------------------------------------------------------------------------
-
+#Create How To (instructions) menu
 def INSTRUCTIONS(url):
-    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] What Is Community Builds?','url',16,'','','','')
-    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Creating A Community Build','url',14,'','','','')
-    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Installing A Community Build','url',15,'','','','')
-#    addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] Create a Community Build (part 1)','url','PLAYVIDEO(https://www.youtube.com/watch?v=3rMScZF2h_U)','','','','')
+    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] What Is Community Builds?','url','instructions_3','How_To.png','','','')
+    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Creating A Community Build','url','instructions_1','How_To.png','','','')
+    addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Installing A Community Build','url','instructions_2','How_To.png','','','')
+    addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] Create a Community Build (part 1)',"3rMScZF2h_U",'play_video','howto.png','','','')
+    addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] Create a Community Build (part 2)',"C2IPhn0OSSw",'play_video','howto.png','','','')
 #    addDir('[COLOR=dodgerblue][TEXT GUIDE] Submitting A Community Backup[/COLOR]','url',16,'','','','')
 #    addDir('[COLOR=dodgerblue][TEXT GUIDE] Creating A Local Backup[/COLOR]','url',17,'','','','')
 #    addDir('[COLOR=dodgerblue][TEXT GUIDE] Restoring A Local Backup[/COLOR]','url',18,'','','','')
 #    addDir('[COLOR=dodgerblue][TEXT GUIDE] Fresh Start XBMC/Kodi[/COLOR]','url',19,'','','','')
-#    addDirvid('Watch preview video','url','plugin://plugin.video.youtube/?action=play_video&videoid='+video,'','','',description)
-
+#---------------------------------------------------------------------------------------------------
+#(Instructions) Create a community backup
 def Instructions_1():
     TextBoxes('Creating A Community Backup', '[COLOR=blue][B]Step 1: Backup your system[/B][/COLOR][CR]Choose the backup option from the main menu, you will be asked whether you would like to delete your addon_data folder. If you decide to choose this option [COLOR=yellow][B]make sure[/COLOR][/B] you already have a full backup of your system as it will completely wipe your addon settings (any stored settings such as passwords or any other changes you\'ve made to addons since they were first installed). If sharing a build with the community it\'s highly advised that you wipe your addon_data but if you\'ve made changes or installed extra data packages (e.g. skin artwork packs) then backup the whole build and then manually delete these on your PC and zip back up again (more on this later).'
     '[CR][CR][COLOR=blue][B]Step 2: Edit zip file on your PC[/B][/COLOR][CR]Copy your backup.zip file to your PC, extract it and delete all the addons and addon_data that isn\'t required.'
@@ -325,92 +721,141 @@ def Instructions_1():
     '[CR][CR][COLOR=blue][B]Step 3: Compress and upload[/B][/COLOR][CR]Use a program like 7zip to create a zip file of your remaining folders and upload to a file sharing site like dropbox.'
     '[CR][CR][COLOR=blue][B]Step 4: Submit build at TotalXBMC[/B][/COLOR]'
     '[CR]Create a thread on the Community Builds section of the forum at [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B].[CR]Full details can be found on there of the template you should use when posting.')
-    
+ #---------------------------------------------------------------------------------------------------
+#(Instructions) Install a community build   
 def Instructions_2():
     TextBoxes('Installing a community build', '[COLOR=blue][B]Step 1 (Optional): Backup your system[/B][/COLOR][CR]We highly recommend creating a backup of your system in case you don\'t like the build and want to revert back. Choose the backup option from the main menu, you will be asked whether you would like to delete your addon_data folder, select no unless you want to lose all your settings. If you ever need your backup it\'s stored in the location you\'ve selected in the addon settings.'
     '[CR][CR][COLOR=blue][B]Step 2: Browse the Community Builds[/B][/COLOR][CR]Find a community build you like the look of and make sure you read the description as it could contain unsuitable content or have specific install instructions. Once you\'ve found the build you want to install click on the install option and you\'ll have the option of a fresh install or a merge [COLOR=yellow](on android fresh instlall is not possible so it will automatically merge)[/COLOR]. The merge option will leave all your existing addons and userdata in place and just add the contents of the new build whereas the fresh (wipe) option will completely wipe your existing data and replace with content on the new build. Once you make your choice the download and extraction process will begin.'
     '[CR][CR][COLOR=blue][B]Step 3: [/COLOR][COLOR=red]VERY IMPORTANT[/COLOR][COLOR=blue] Force Close XBMC/Kodi[/B][/COLOR][CR]For the install to complete properly you MUST force close XBMC/Kodi, if you exit XBMC cleanly the skin settings will not take effect and you\'ll end up with some sort of hybrid build not quite finished! The addon will attempt to force close but if it doesn\'t the easiest option is to just pull the power to your device unless you know how to force close XBMC/Kodi (e.g. on Windows it would be ALT + F4).'
     '[CR][CR][COLOR=blue][B]Step 4: Load XBMC/Kodi[/B][/COLOR][CR]You can now safely load up XBMC/Kodi and all changes should have taken effect')
-
+#---------------------------------------------------------------------------------------------------
+#(Instructions) What is a community build
 def Instructions_3():
     TextBoxes('What is a community build', 'Community Builds are pre-configured builds of XBMC/Kodi based on different users setups. Have you ever watched youtube videos or seen screenshots of Kodi in action and thought "wow I wish I could do that"? Well now you can have a brilliant setup at the click of a button, completely pre-configured by users on the [COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B] forum. If you\'d like to get involved yourself and share your build with the community it\'s very simple to do, just go to the forum where you\'ll find full details or you can follow the guide in this addon.')
- 
-def Instructions_4():
-    TextBoxes('Creating A Community Backup', '[COLOR=blue][B]Step 1: Backup your system[/B][CR]Choose the backup option from the main manu, you will be asked whether you would like to delete your addon_data folder. If you decide to choose this option [COLOR=yellow}[B]make sure[/COLOR][/B] you already have a full backup of your system as it will completely wipe your addon settings (any stored settings such as passwords or any other changes you\'ve made to addons since they were first installed).')
-
-def Instructions_5():
-    TextBoxes('Creating A Community Backup', '[COLOR=blue][B]Step 1: Backup your system[/B][CR]Choose the backup option from the main manu, you will be asked whether you would like to delete your addon_data folder. If you decide to choose this option [COLOR=yellow}[B]make sure[/COLOR][/B] you already have a full backup of your system as it will completely wipe your addon settings (any stored settings such as passwords or any other changes you\'ve made to addons since they were first installed).')
-
-def Instructions_6():
-    TextBoxes('Creating A Community Backup', '[COLOR=blue][B]Step 1: Backup your system[/B][CR]Choose the backup option from the main manu, you will be asked whether you would like to delete your addon_data folder. If you decide to choose this option [COLOR=yellow}[B]make sure[/COLOR][/B] you already have a full backup of your system as it will completely wipe your addon settings (any stored settings such as passwords or any other changes you\'ve made to addons since they were first installed).')
 #---------------------------------------------------------------------------------------------------
-
-def COMMUNITY_MENU(name,url,description,video):
-    addDir('Full description','url',10,'','','',description)
-# NOT WORKING, DON'T KNOW WHY    addDirVid('Watch preview video',video,12,'','','',description)
-    addDir('Install '+name+' Build',url,7,'','','',description)
-    
+# This creates the final menu showing build details, video and install link
+def COMMUNITY_MENU(url):
+    newid=str(url)
+    BaseURL='http://totalxbmc.tv/totalrevolution/Community_Builds/community_builds.php?id=%s' % (url)
+    link = OPEN_URL(BaseURL).replace('\n','').replace('\r','')
+    videoguidematch = re.compile('videoguide="https://www.youtube.com/watch\?v=(.+?)"').findall(link)
+    videopreviewmatch = re.compile('videopreview="https://www.youtube.com/watch\?v=(.+?)"').findall(link)
+    namematch = re.compile('name="(.+?)"').findall(link)
+    authormatch = re.compile('author="(.+?)"').findall(link)
+    versionmatch = re.compile('version="(.+?)"').findall(link)
+    descmatch = re.compile('description="(.+?)"').findall(link)
+    downloadmatch = re.compile('DownloadURL="(.+?)"').findall(link)
+    updatedmatch = re.compile('updated="(.+?)"').findall(link)
+    skinsmatch = re.compile('skins="(.+?)"').findall(link)
+    videoaddonsmatch = re.compile('videoaddons="(.+?)"').findall(link)
+    audioaddonsmatch = re.compile('audioaddons="(.+?)"').findall(link)
+    programaddonsmatch = re.compile('programaddons="(.+?)"').findall(link)
+    pictureaddonsmatch = re.compile('pictureaddons="(.+?)"').findall(link)
+    sourcesmatch = re.compile('sources="(.+?)"').findall(link)
+    adultmatch = re.compile('adult="(.+?)"').findall(link)
+	
+    name  = namematch[0] if (len(namematch) > 0) else ''
+    author  = authormatch[0] if (len(authormatch) > 0) else ''
+    version  = versionmatch[0] if (len(versionmatch) > 0) else ''
+    description  = descmatch[0] if (len(descmatch) > 0) else 'No information available'
+    updated = updatedmatch[0] if (len(updatedmatch) > 0) else ''
+    skins = skinsmatch[0] if (len(skinsmatch) > 0) else ''
+    videoaddons = videoaddonsmatch[0] if (len(videoaddonsmatch) > 0) else ''
+    audioaddons = audioaddonsmatch[0] if (len(audioaddonsmatch) > 0) else ''
+    programaddons = programaddonsmatch[0] if (len(programaddonsmatch) > 0) else ''
+    pictureaddons = pictureaddonsmatch[0] if (len(pictureaddonsmatch) > 0) else ''
+    sources = sourcesmatch[0] if (len(sourcesmatch) > 0) else ''
+    adult = adultmatch[0] if (len(adultmatch) > 0) else ''
+    downloadURL  = downloadmatch[0] if (len(downloadmatch) > 0) else 'None'
+    videopreview  = videopreviewmatch[0] if (len(videopreviewmatch) > 0) else 'None'
+    videoguide  = videoguidematch[0] if (len(videoguidematch) > 0) else 'None'
+    localfile = open(tempfile, mode='w+')
+    localfile.write('id="'+url+'"name="'+name+'"')
+    localfile.close()
+    print downloadURL
+    print description
+    print author
+    print name
+    print videopreview
+    print BaseURL
+    addDescDir('Full description','None','description','BUILDDETAILS.png',fanart,name,author,version,description,updated,skins,videoaddons,audioaddons,programaddons,pictureaddons,sources,adult)
+    if videopreview=='None':
+        pass
+    else:
+        addDir('Watch Preview Video',videopreview,'play_video','Video_Preview.png',fanart,'','')
+    if videoguide=='None':
+        pass
+    else:
+        addDir('Watch Video Guide',videoguide,'play_video','Video_Guide.png',fanart,'','')    
+    if downloadURL=='None':
+        addBuildDir('[COLOR=lime]Sorry this build is currently unavailable[COLOR]','','','','','','')
+    else:
+        addBuildDir('[COLOR=lime]Install '+name+'[/COLOR]',downloadURL,'restore_community',iconimage,fanart,'',name)
 #---------------------------------------------------------------------------------------------------
-
-def DESCRIPTION(name,url,description):
-    TextBoxes(name, '[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] Community Builds[/B][CR]These are community builds and they may overwrite some of your existing settings, things like system location and screen calibration will almost certainly have to be changed once the install has completed. TotalXBMC take no responsibility over what content is included in these builds, it\'s up to the individual who uploads the build to state what\'s included and then the users decision to decide whether or not that content is suitable for them.[CR][CR][CR][COLOR=yellow][B]Description:[CR][/B][/COLOR]'+description)
-
+#Show full description of build
+def DESCRIPTION(name,url,buildname,author,version,description,updated,skins,videoaddons,audioaddons,programaddons,pictureaddons,sources,adult):
+    TextBoxes(buildname+'     v.'+version, '[COLOR=yellow][B]Author:   [/B][/COLOR]'+author+'[COLOR=yellow][B]               Last Updated:   [/B][/COLOR]'+updated+'[COLOR=yellow][B]               Adult Content:   [/B][/COLOR]'+adult+'[CR][CR][COLOR=yellow][B]Description:[CR][/B][/COLOR]'+description+
+    '[CR][CR][COLOR=blue][B]Skins:   [/B][/COLOR]'+skins+'[CR][CR][COLOR=blue][B]Video Addons:   [/B][/COLOR]'+videoaddons+'[CR][CR][COLOR=blue][B]Audio Addons:   [/B][/COLOR]'+audioaddons+
+    '[CR][CR][COLOR=blue][B]Program Addons:   [/B][/COLOR]'+programaddons+'[CR][CR][COLOR=blue][B]Picture Addons:   [/B][/COLOR]'+pictureaddons+'[CR][CR][COLOR=blue][B]Sources:   [/B][/COLOR]'+sources+
+    '[CR][CR][COLOR=gold]Disclaimer: [/COLOR]These are community builds and they may overwrite some of your existing settings, '
+    'things like system location and screen calibration will almost certainly have to be changed once the install has completed. TotalXBMC take no responsibility over what content '
+    'is included in these builds, it\'s up to the individual who uploads the build to state what\'s included and then the users decision to decide whether or not that content is suitable for them.')
 #---------------------------------------------------------------------------------------------------
-
+#Create backup menu
 def BACKUP_OPTION():
     dialog.ok("[COLOR=red][B]VERY IMPORTANT![/COLOR][/B]", 'If you plan on creating a backup to share [COLOR=lime]ALWAYS[/COLOR] make', 'sure you\'ve deleted your addon_data folder as uninstalling', 'an addon does not remove personal data such as passwords.')             
-    addDir('FULL BACKUP','url',3,'','','','Back Up Your Full System')
-    addDir('Backup Just Your Addons','addons',6,'','','','Back Up Your Addons')
-    addDir('Backup Just Your Addon UserData','addon_data',6,'','','','Back Up Your Addon Userdata')
-    addDir('Backup Guisettings.xml',GUI,4,'','','','Back Up Your guisettings.xml')
+    addDir('FULL BACKUP','url','backup','Backup.png','','','Back Up Your Full System')
+    addDir('Backup Just Your Addons','addons','restore_zip','Backup.png','','','Back Up Your Addons')
+    addDir('Backup Just Your Addon UserData','addon_data','restore_zip','Backup.png','','','Back Up Your Addon Userdata')
+    addDir('Backup Guisettings.xml',GUI,'resore_backup','Backup.png','','','Back Up Your guisettings.xml')
     if os.path.exists(FAVS):
-        addDir('Backup Favourites.xml',FAVS,4,'','','','Back Up Your favourites.xml')
+        addDir('Backup Favourites.xml',FAVS,'resore_backup','Backup.png','','','Back Up Your favourites.xml')
     if os.path.exists(SOURCE):
-        addDir('Backup Source.xml',SOURCE,4,'','','','Back Up Your sources.xml')
+        addDir('Backup Source.xml',SOURCE,'resore_backup','Backup.png','','','Back Up Your sources.xml')
     if os.path.exists(ADVANCED):
-        addDir('Backup Advancedsettings.xml',ADVANCED,4,'','','','Back Up Your advancedsettings.xml')
+        addDir('Backup Advancedsettings.xml',ADVANCED,'resore_backup','Backup.png','','','Back Up Your advancedsettings.xml')
     if os.path.exists(KEYMAPS):
-        addDir('Backup Advancedsettings.xml',KEYMAPS,4,'','','','Back Up Your keyboard.xml')
+        addDir('Backup Advancedsettings.xml',KEYMAPS,'resore_backup','Backup.png','','','Back Up Your keyboard.xml')
     if os.path.exists(RSS):
-        addDir('Backup RssFeeds.xml',RSS,4,'','','','Back Up Your RssFeeds.xml')    
-
+        addDir('Backup RssFeeds.xml',RSS,'resore_backup','Backup.png','','','Back Up Your RssFeeds.xml')
 #---------------------------------------------------------------------------------------------------
-
+#Create restore menu
 def RESTORE_OPTION():
     if os.path.exists(os.path.join(USB,'backup.zip')):   
-        addDir('FULL RESTORE','url',2,'','','','Back Up Your Full System')
+        addDir('FULL RESTORE','url','restore','Restore.png','','','Back Up Your Full System')
         
     if os.path.exists(os.path.join(USB,'addons.zip')):   
-        addDir('Restore Your Addons','addons',6,'','','','Restore Your Addons')
+        addDir('Restore Your Addons','addons','restore_zip','Restore.png','','','Restore Your Addons')
 
     if os.path.exists(os.path.join(USB,'addon_data.zip')):   
-        addDir('Restore Your Addon UserData','addon_data',6,'','','','Restore Your Addon UserData')           
+        addDir('Restore Your Addon UserData','addon_data','restore_zip','Restore.png','','','Restore Your Addon UserData')           
 
     if os.path.exists(os.path.join(USB,'guisettings.xml')):
-        addDir('Restore Guisettings.xml',GUI,4,'','','','Restore Your guisettings.xml')
+        addDir('Restore Guisettings.xml',GUI,'resore_backup','Restore.png','','','Restore Your guisettings.xml')
     
     if os.path.exists(os.path.join(USB,'favourites.xml')):
-        addDir('Restore Favourites.xml',FAVS,4,'','','','Restore Your favourites.xml')
+        addDir('Restore Favourites.xml',FAVS,'resore_backup','Restore.png','','','Restore Your favourites.xml')
         
     if os.path.exists(os.path.join(USB,'sources.xml')):
-        addDir('Restore Source.xml',SOURCE,4,'','','','Restore Your sources.xml')
+        addDir('Restore Source.xml',SOURCE,'resore_backup','Restore.png','','','Restore Your sources.xml')
         
     if os.path.exists(os.path.join(USB,'advancedsettings.xml')):
-        addDir('Restore Advancedsettings.xml',ADVANCED,4,'','','','Restore Your advancedsettings.xml')        
+        addDir('Restore Advancedsettings.xml',ADVANCED,'resore_backup','Restore.png','','','Restore Your advancedsettings.xml')        
 
     if os.path.exists(os.path.join(USB,'keyboard.xml')):
-        addDir('Restore Advancedsettings.xml',KEYMAPS,4,'','','','Restore Your keyboard.xml')
+        addDir('Restore Advancedsettings.xml',KEYMAPS,'resore_backup','Restore.png','','','Restore Your keyboard.xml')
         
     if os.path.exists(os.path.join(USB,'RssFeeds.xml')):
-        addDir('Restore RssFeeds.xml',RSS,4,'','','','Restore Your RssFeeds.xml')    
-
+        addDir('Restore RssFeeds.xml',RSS,'resore_backup','Restore.png','','','Restore Your RssFeeds.xml')    
 #---------------------------------------------------------------------------------------------------
-
+#Function to restore a previously backed up zip, this includes full backup, addons or addon_data.zip
 def RESTORE_ZIP_FILE(url):
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
         ADDON.openSettings(sys.argv[0])
-        
+    if not os.path.exists(zip):
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
+        ADDON.openSettings(sys.argv[0])        
     if 'addons' in url:
         ZIPFILE = xbmc.translatePath(os.path.join(USB,'addons.zip'))
         DIR = ADDONS
@@ -420,7 +865,6 @@ def RESTORE_ZIP_FILE(url):
     else:
         ZIPFILE = xbmc.translatePath(os.path.join(USB,'addon_data.zip'))
         DIR = ADDON_DATA
-
         
     if 'Backup' in name:
         DeletePackages() 
@@ -467,7 +911,7 @@ def RESTORE_ZIP_FILE(url):
         else:
             dialog.ok("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]", "You Are Now Restored", '','')        
 #---------------------------------------------------------------------------------------------------
-
+#Function to restore a backup xml file (guisettings, sources, RSS)
 def RESTORE_BACKUP_XML(name,url,description):
     if 'Backup' in name:
         TO_READ   = open(url).read()
@@ -497,9 +941,8 @@ def RESTORE_BACKUP_XML(name,url,description):
             f.write(TO_READ)
             f.close()  
     dialog.ok("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]", "", 'All Done !','')
-
 #---------------------------------------------------------------------------------------------------
-
+#Function to delete the packages folder
 def DeletePackages():
     print '############################################################       DELETING PACKAGES             ###############################################################'
     packages_cache_path = xbmc.translatePath(os.path.join('special://home/addons/packages', ''))
@@ -515,9 +958,8 @@ def DeletePackages():
                 os.unlink(os.path.join(root, f))
             for d in dirs:
                 shutil.rmtree(os.path.join(root, d))
-
 #---------------------------------------------------------------------------------------------------
-
+#Function to delete the userdata/addon_data folder
 def DeleteUserData():
     print '############################################################       DELETING USERDATA             ###############################################################'
     packages_cache_path = xbmc.translatePath(os.path.join('special://home/userdata/addon_data', ''))
@@ -534,14 +976,15 @@ def DeleteUserData():
             for d in dirs:
                 shutil.rmtree(os.path.join(root, d))        
 #---------------------------------------------------------------------------------------------------
-
+#Function to do a full wipe. Thanks to kozz for working out how to add an exclude clause so community builds addon_data and addon isn't touched.
 def WipeXBMC():
     plugintools.log("community.builds.WipeXBMC "+repr(params)); yes_pressed=plugintools.message_yes_no(AddonTitle,"This will completely wipe your existing setup.","Are you [COLOR=lime]ABSOSLUTELY[/COLOR] certain you wish to proceed?")
     if yes_pressed:
         addonPath=xbmcaddon.Addon(id=AddonID).getAddonInfo('path'); addonPath=xbmc.translatePath(addonPath); 
         xbmcPath=os.path.join(addonPath,"..",".."); xbmcPath=os.path.abspath(xbmcPath); plugintools.log("community.builds.WipeXBMC xbmcPath="+xbmcPath); failed=False  
         try:
-            for root, dirs, files in os.walk(xbmcPath,topdown=False):
+            for root, dirs, files in os.walk(xbmcPath,topdown=True):
+                dirs[:] = [d for d in dirs if d not in EXCLUDES]
                 for name in files:
                     try: os.remove(os.path.join(root,name))
                     except:
@@ -556,18 +999,20 @@ def WipeXBMC():
             else: plugintools.log("community.builds.WipeXBMC User files partially removed"); plugintools.message(AddonTitle,"Wipe complete, you now have a fresh install.","The addon will now attempt to close XBMC/Kodi."); xbmc.executebuiltin("RestartApp")
         except: plugintools.message(AddonTitle,"Problem found","Your settings has not been changed"); import traceback; plugintools.log(traceback.format_exc()); plugintools.log("community.builds.WipeXBMC NOT removed")
         plugintools.add_item(action="",title="Done",folder=False)
-    else: plugintools.message(AddonTitle,"Your settings","has not been changed"); plugintools.add_item(action="",title="Done",folder=False)
-    
+    else: plugintools.message(AddonTitle,"Your settings","has not been changed"); plugintools.add_item(action="",title="Done",folder=False)  
 #---------------------------------------------------------------------------------------------------
-
+#Function to do a full wipe - this is called when doing a fresh CB install.
+#Thanks to kozz for working out how to add an exclude clause so community builds addon_data and addon isn't touched.
 def WipeInstall():
     plugintools.log("community.builds.WipeXBMC "+repr(params)); yes_pressed=plugintools.message_yes_no(AddonTitle,"This will completely wipe your existing setup.","Are you [COLOR=lime]ABSOSLUTELY[/COLOR] certain you wish to proceed?")
     if yes_pressed:
         addonPath=xbmcaddon.Addon(id=AddonID).getAddonInfo('path'); addonPath=xbmc.translatePath(addonPath); 
         xbmcPath=os.path.join(addonPath,"..",".."); xbmcPath=os.path.abspath(xbmcPath); plugintools.log("community.builds.WipeXBMC xbmcPath="+xbmcPath); failed=False  
         try:
-            for root, dirs, files in os.walk(xbmcPath,topdown=False):
+            for root, dirs, files in os.walk(xbmcPath,topdown=True):
+                dirs[:] = [d for d in dirs if d not in EXCLUDES]
                 for name in files:
+                    
                     try: os.remove(os.path.join(root,name))
                     except:
                         if name not in ["Addons*.db","MyVideos*.db","Textures*.db","xbmc.log","kodi.log"]: failed=True
@@ -580,7 +1025,7 @@ def WipeInstall():
         except: pass
     else: return
 #---------------------------------------------------------------------------------------------------
-
+#Get params and clean up into string or integer
 def get_params():
         param=[]
         paramstring=sys.argv[2]
@@ -598,33 +1043,58 @@ def get_params():
                                 param[splitparams[0]]=splitparams[1]
                                 
         return param
-
 #---------------------------------------------------------------------------------------------------
-
-def addDir(name,url,mode,iconimage,fanart,video,description):
+#Main addDirectory function - xbmcplugin.addDirectoryItem()
+def addDirectoryItem(handle, url, listitem, isFolder):
+    xbmcplugin.addDirectoryItem(handle, url, listitem, isFolder)
+#---------------------------------------------------------------------------------------------------
+#Add a standard directory and grab fanart and iconimage from artpath defined in global variables
+def addDir(name,url,mode,iconimage = '',fanart = '',video = '',description = ''):
+    if len(iconimage) > 0:
+        iconimage = ARTPATH + iconimage
+    else:
+        iconimage = 'DefaultFolder.png'
+        
+    u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&fanart="+urllib.quote_plus(fanart)+"&video="+urllib.quote_plus(video)+"&description="+urllib.quote_plus(description)
+    ok=True
+    liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
+    liz.setInfo( type="Video", infoLabels={ "Title": name, "Plot": description } )
+    liz.setProperty( "Fanart_Image", fanart )
+    liz.setProperty( "Build.Video", video )
+    if (mode==None) or (mode=='search_builds') or (mode=='manual_search') or (mode=='genres2') or (mode=='restore_option') or (mode=='backup_option') or (mode=='cb_root_menu') or (mode=='genres') or (mode=='grab_builds') or (mode=='grab_builds2') or (mode=='community_menu') or (mode=='instructions') or (mode=='countries')or (url==None) or (len(url)<1):
+        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
+    else:
+        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
+    return ok
+#---------------------------------------------------------------------------------------------------
+#Add a standard directory for the builds. Essentially the same as above but grabs unique artwork from previous call
+def addBuildDir(name,url,mode,iconimage,fanart,video,description):
         u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&iconimage="+urllib.quote_plus(iconimage)+"&fanart="+urllib.quote_plus(fanart)+"&video="+urllib.quote_plus(video)+"&description="+urllib.quote_plus(description)
         ok=True
         liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
         liz.setInfo( type="Video", infoLabels={ "Title": name, "Plot": description } )
         liz.setProperty( "Fanart_Image", fanart )
         liz.setProperty( "Build.Video", video )
-        if (mode==None) or (mode==5) or (mode==1) or (mode==6) or (mode==8) or (mode==11) or (mode==13) or (url==None) or (len(url)<1):
+        if (mode==None) or (mode=='genres2') or (mode=='restore_option') or (mode=='backup_option') or (mode=='cb_root_menu') or (mode=='genres') or (mode=='grab_builds') or (mode=='grab_builds2') or (mode=='community_menu') or (mode=='instructions') or (mode=='countries')or (url==None) or (len(url)<1):
             ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
         else:
             ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
         return ok
-
-def addDirvid(name,url,mode,iconimage,fanart,video,description):
-        u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&iconimage="+urllib.quote_plus(iconimage)+"&fanart="+urllib.quote_plus(fanart)+"&video="+urllib.quote_plus(video)+"&description="+urllib.quote_plus(description)
+#---------------------------------------------------------------------------------------------------
+#Add a directory for the description, this requires multiple string to be called from previous menu
+def addDescDir(name,url,mode,iconimage,fanart,buildname,author,version,description,updated,skins,videoaddons,audioaddons,programaddons,pictureaddons,sources,adult):
+        iconimage = ARTPATH + iconimage
+        u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)+"&iconimage="+urllib.quote_plus(iconimage)+"&fanart="+urllib.quote_plus(fanart)+"&author="+urllib.quote_plus(author)+"&description="+urllib.quote_plus(description)+"&version="+urllib.quote_plus(version)+"&buildname="+urllib.quote_plus(buildname)+"&updated="+urllib.quote_plus(updated)+"&skins="+urllib.quote_plus(skins)+"&videoaddons="+urllib.quote_plus(videoaddons)+"&audioaddons="+urllib.quote_plus(audioaddons)+"&buildname="+urllib.quote_plus(buildname)+"&programaddons="+urllib.quote_plus(programaddons)+"&pictureaddons="+urllib.quote_plus(pictureaddons)+"&sources="+urllib.quote_plus(sources)+"&adult="+urllib.quote_plus(adult)
         ok=True
         liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
         liz.setInfo( type="Video", infoLabels={ "Title": name, "Plot": description } )
         liz.setProperty( "Fanart_Image", fanart )
-        liz.setProperty( "Addon.Video", video )
-        liz.setProperty('IsPlayable', 'true')
+        liz.setProperty( "Build.Video", video )
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
-
+        return ok
 #---------------------------------------------------------------------------------------------------
+#Function to return the platform XBMC is currently running on.
+#Could possibly do away with this and use xbmc.getInfoLabel("System.BuildVersion") in the killxbmc function
 def platform():
     if xbmc.getCondVisibility('system.platform.android'):
         return 'android'
@@ -638,16 +1108,26 @@ def platform():
         return 'atv2'
     elif xbmc.getCondVisibility('system.platform.ios'):
         return 'ios'
-   
 #---------------------------------------------------------------------------------------------------
-   
+# Addon starts here
 params=get_params()
 url=None
 name=None
+buildname=None
+updated=None
+author=None
+version=None
 mode=None
 iconimage=None
 description=None
 video=None
+link=None
+skins=None
+videoaddons=None
+audioaddons=None
+programaddons=None
+audioaddons=None
+sources=None
 
 try:
         url=urllib.unquote_plus(params["url"])
@@ -666,7 +1146,55 @@ try:
 except:
         pass
 try:        
-        mode=int(params["mode"])
+        mode=str(params["mode"])
+except:
+        pass
+try:
+        link=urllib.unquote_plus(params["link"])
+except:
+        pass
+try:
+        skins=urllib.unquote_plus(params["skins"])
+except:
+        pass
+try:
+        videoaddons=urllib.unquote_plus(params["videoaddons"])
+except:
+        pass
+try:
+        audioaddons=urllib.unquote_plus(params["audioaddons"])
+except:
+        pass
+try:
+        programaddons=urllib.unquote_plus(params["programaddons"])
+except:
+        pass
+try:
+        pictureaddons=urllib.unquote_plus(params["pictureaddons"])
+except:
+        pass
+try:
+        sources=urllib.unquote_plus(params["sources"])
+except:
+        pass
+try:
+        adult=urllib.unquote_plus(params["adult"])
+except:
+        pass
+try:
+        buildname=urllib.unquote_plus(params["buildname"])
+except:
+        pass
+try:
+        updated=urllib.unquote_plus(params["updated"])
+except:
+        pass
+try:
+        version=urllib.unquote_plus(params["version"])
+except:
+        pass
+try:
+        author=urllib.unquote_plus(params["author"])
 except:
         pass
 try:        
@@ -680,62 +1208,87 @@ except:
 
         
 if mode==None or url==None or len(url)<1:
-        CATEGORIES()
-elif mode==1:
+        VideoCheck()
+elif mode=='backup_option':
         BACKUP_OPTION()
-elif mode==2:
+elif mode=='restore':
         print "############   RESTORE  #################"
         RESTORE()    
-elif mode==3:
+elif mode=='backup':
         print "############   BACKUP  #################"
         BACKUP()
-elif mode==4:
+elif mode=='restore_backup':
         print "############   RESTORE_BACKUP_XML #################"
         RESTORE_BACKUP_XML(name,url,description)
-elif mode==5:
+elif mode=='restore_option':
         print "############   RESTORE_OPTION   #################"
         RESTORE_OPTION()
-elif mode==6:
+elif mode=='restore_zip':
         print "############   RESTORE_ZIP_FILE   #################"
         RESTORE_ZIP_FILE(url)         
-elif mode==7:
+elif mode=='restore_community':
         print "############   RESTORE_COMMUNITY BUILD  #################"
         RESTORE_COMMUNITY(name,url,description)        
-elif mode==8:
+elif mode=='grab_builds':
         print "############   CALL COMMUNITY SECTION   #################"
-        COMMUNITY()        
-elif mode==9:
+        COMMUNITY(url)        
+elif mode=='grab_builds2':
+        print "############   CALL COMMUNITY SECTION   #################"
+        COMMUNITY2(url)        
+elif mode=='wipe_xbmc':
         print "############   WIPE XBMC   #################"
         WipeXBMC()
-elif mode==10:
+elif mode=='description':
         print "############   BUILD DESCRIPTION   #################"
-        DESCRIPTION(name,url,description)        
-elif mode==11:
-        print "############   BUILD DESCRIPTION   #################"
-        COMMUNITY_MENU(name,url,description,video)        
-elif mode==12:
+        DESCRIPTION(name,url,buildname,author,version,description,updated,skins,videoaddons,audioaddons,programaddons,pictureaddons,sources,adult)
+
+elif mode=='community_menu':
+        print "############   BUILD COMMUNITY LIST   #################"
+        COMMUNITY_MENU(url)        
+elif mode=='play_video':
         print "############   PLAY VIDEO   #################"
         PLAYVIDEO(url)
-elif mode==13:
+elif mode=='instructions':
         print "############   INSTRUCTIONS MENU   #################"
         INSTRUCTIONS(url)
-elif mode==14:
+elif mode=='instructions_1':
         print "############   SHOW INSTRUCTIONS 1   #################"
         Instructions_1()
-elif mode==15:
+elif mode=='instructions_2':
         print "############   SHOW INSTRUCTIONS 2   #################"
         Instructions_2()
-elif mode==16:
+elif mode=='instructions_3':
         print "############   SHOW INSTRUCTIONS 3   #################"
         Instructions_3()
-elif mode==17:
+elif mode=='instructions_4':
         print "############   SHOW INSTRUCTIONS 4   #################"
         Instructions_4()
-elif mode==18:
+elif mode=='instructions_5':
         print "############   SHOW INSTRUCTIONS 5   #################"
         Instructions_5()
-elif mode==19:
+elif mode=='instructions_6':
         print "############   SHOW INSTRUCTIONS 6   #################"
         Instructions_6()
+elif mode=='cb_root_menu':
+        print "############   Community Builds Menu   #################"
+        CB_Root_Menu()
+elif mode=='genres':
+        print "############   Build GENRE1 Menu   #################"
+        GENRES()
+elif mode=='countries':
+        print "############   Build COUNTRIES Menu   #################"
+        COUNTRIES()
+elif mode=='genres2':
+        print "############   Build GENRE2 Menu   #################"
+        GENRES2(url)
+elif mode=='search_builds':
+        print "############   MANUAL SEARCH BUILDS   #################"
+        SEARCH_BUILDS()
+elif mode=='manual_search':
+        print "############   MANUAL SEARCH BUILDS   #################"
+        MANUAL_SEARCH()
+elif mode=='community_search':
+        print "############   MANUAL SEARCH BUILDS   #################"
+        COMMUNITY_SEARCH()
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))

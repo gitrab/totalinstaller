@@ -1,3 +1,20 @@
+1.1.4:
+- Fixed popup screen issue, now opens a window rather than ShowPicture()
+- Added a check to see if download location is a valid link
+- Added lots of code ready to check for updates, will be activated in next version
+
+1.1.3:
+- Complete re-code, rather than scraping a text file we are using the database
+- Added login feature for extra features. More features coming soon, login will soon make sense!
+- Added option to hide adult in addon settings
+- Only builds compatible for the version of XBMC currently running will show
+- Added splash and dialog if not logged in
+- Added check for new important video, this will also be used to pull running build info
+- Added lots of different search criteria (must be logged in)
+- Fixed Android wipe option
+- No loner wipes Community Builds addon or data when doing fresh install.
+- Added video guides
+
 1.0.9:
 - Removed zip folder check on first run, only checks when accessing backup options which fixes the script error
 - Added option to do a fresh community build (wipe) or merge with existing build.

@@ -1,7 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
+    <category label="Login">
+		<setting id="login" type="bool" label="Enable TotalXBMC Forum Login" default="false"/>
+		<setting id="username" label="Username" type="text" default="" visible="true"  enable="!eq(-1,false)"/>
+		<setting id="password" label="Password" type="text" default="" visible="true" option="hidden"  enable="!eq(-2,false)"/>
+		<setting type="lsep" label="If you don't already have an account you can register for free."/>
+		<setting type="lsep" label="Adding login info will unlock all the latest features!"/>
+		<setting type="lsep" label="[CR]Visit [COLOR=lime]www.totalxbmc.tv[/COLOR] and click on the forum link."/>
+   	</category>
     <category label="Backup Folder">
         <setting id="zip" type="folder"    label="Choose Backup Storage Location"      default=""/>
 		<setting type="lsep" label="[COLOR=red]DO NOT[/COLOR] use a location inside your XBMC/Kodi setup."/>
-		<setting type="lsep" label="The storage location [COLOR=lime]MUST[/COLOR] be elsewhere."/>
+		<setting type="lsep" label="[CR]Also make sure you choose a location that XBMC/Kodi can write to."/>
+		<setting type="lsep" label="It is not possible to write to a network location."/>
+	</category>
+    <category label="Log Uploader">
+    	<setting id="email" type="text" label="E-Mail Address"/>
+		<setting type="lsep" label="Once your log is uploaded you will receive an email with the link."/>
+	</category>
+    <category label="Adult Content">
+        <setting id="adult" type="bool" label="Show builds with XXX content" default="false" />
+		<setting id="VERSION"   type="text"      label="Current Version"               default="0.0.0"  visible="false"/>
+		<setting id="VIDEO"     type="bool"      label="Video shown"                   default="false"  visible="false"/>
 	</category>
 </settings>
