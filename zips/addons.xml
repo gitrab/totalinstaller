@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addons>
-<addon id="plugin.program.community.builds" name="[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]" version="1.1.5" provider-name="whufclee,.Mikey1234 (original code)">
+<addon id="plugin.program.community.builds" name="[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]" version="1.1.9" provider-name="whufclee">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
   </requires>
@@ -9,7 +9,7 @@
   </extension>
   <extension point="xbmc.addon.metadata">
     <summary lang="en">TotalRevolution Community Builds</summary>
-    <description lang="en">Backup/restore your own build or install one of the many community builds available.[CR]Brought to you by [COLOR=lime][B]TotalXBMC[/COLOR][/B].[CR][CR]Thanks to Mikey1234 for the original code in the USB/SD Wizard addon.</description>
+    <description lang="en">Backup/restore your own build or install one of the many community builds available.[CR]Brought to you by [COLOR=lime][B]TotalXBMC[/COLOR][/B].[CR][CR]Create your very own build and share with the community, you can now create your own universal build at the click of a button.</description>
     <platform>all</platform>
   </extension>
 </addon>

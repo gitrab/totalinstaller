@@ -1,3 +1,17 @@
+1.1.9:
+- Added check for wipe (fresh start). Now needs to be running Confluence otherwise will not wipe.
+- Fixed Force Close. No longer needed as we're now using UnloadSkin and ReloadSkin followed by clean exit. User just needs to switch to desired skin on next prior to doing step 2.
+- Option to create your own community build. Everything is done for you and zipped up, just needs uploading and a post made on totalxbmc.tv forum.
+- Better error checking to make sure paths exist.
+- Now an option to just install the guisettings.xml file, useful for users that didn't force close correctly.
+- Changed install method to 2-part method...
+---- Part 1 installs as usual and just quits xbmc (not saving new guisettings.xml)
+---- Part 2 will continue automatically when XBMC is restarted, it will MERGE the new guisettings with the old.
+---- The merge currently keeps all existing settings except for <skinsettings> <skin default> and <lookandfeel> which is grabbed from the new build.
+- Registered members now get the following benefits as well as the previously addded search options:
+----- Show installed build
+---- Notify of any new updates to the build
+
 1.1.5:
 - Quick fix for adding id.xml if one doesn't exist - accidentally pushed test version!
 
