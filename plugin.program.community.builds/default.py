@@ -28,6 +28,7 @@ ADDON_DATA   =  xbmc.translatePath(os.path.join(USERDATA,'addon_data'))
 PLAYLISTS    =  xbmc.translatePath(os.path.join(USERDATA,'playlists'))
 PROFILES     =  xbmc.translatePath(os.path.join(USERDATA,'profiles'))
 ADDONS       =  xbmc.translatePath(os.path.join('special://home','addons',''))
+CBADDONPATH  =  xbmc.translatePath(os.path.join(ADDONS,AddonID,'default.py'))
 GUISETTINGS  =  os.path.join(USERDATA,'guisettings.xml')
 GUI          =  xbmc.translatePath(os.path.join(USERDATA,'guisettings.xml'))
 GUINEW       =  xbmc.translatePath(os.path.join(USERDATA,'guinew.xml'))
@@ -39,6 +40,7 @@ ADVANCED     =  xbmc.translatePath(os.path.join(USERDATA,'advancedsettings.xml')
 RSS          =  xbmc.translatePath(os.path.join(USERDATA,'RssFeeds.xml'))
 KEYMAPS      =  xbmc.translatePath(os.path.join(USERDATA,'keymaps','keyboard.xml'))
 USB          =  xbmc.translatePath(os.path.join(zip))
+CBPATH       =  xbmc.translatePath(os.path.join(USB,'Community Builds',''))
 cookiepath   =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'cookiejar'))
 startuppath  =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'startup.xml'))
 tempfile     =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'temp.xml'))
@@ -369,7 +371,7 @@ def OPEN_URL(url):
 #Function to restore a community build
 def RESTORE_COMMUNITY(name,url,description):
     import time
-    myplatform = platform()
+#    myplatform = platform()
     CHECK_DOWNLOAD_PATH()
     choice = xbmcgui.Dialog().yesno(name, 'We highly recommend backing up your existing build before', 'installing any community builds.', 'Would you like to perform a backup first?', nolabel='Backup',yeslabel='Install')
     if choice == 0:
@@ -379,44 +381,49 @@ def RESTORE_COMMUNITY(name,url,description):
         if choice2 == 0: pass
         elif choice2 == 1:
             WipeInstall()
-        if skin == "skin.confluence":
-            dp.create("Community Builds","Downloading "+description +" build.",'', 'Please Wait')
-            lib=os.path.join(zip, 'Community Builds', description+'.zip')
-            try: os.remove(lib)
-            except: pass
-            downloader.download(url, lib, dp)
-            READ_ZIP(lib)
-            dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
-            HOME = xbmc.translatePath(os.path.join('special://','home')) 
-            dp.update(0,"", "Extracting Zip Please Wait")
-            extract.all(lib,HOME,dp)
-            time.sleep(1)
-            localfile = open(tempfile, mode='r')
-            content = file.read(localfile)
-            file.close(localfile)
-            temp = re.compile('id="(.+?)"').findall(content)
-            tempcheck  = temp[0] if (len(temp) > 0) else ''
-            tempname = re.compile('name="(.+?)"').findall(content)
-            namecheck  = tempname[0] if (len(tempname) > 0) else ''
-            tempversion = re.compile('version="(.+?)"').findall(content)
-            versioncheck  = tempversion[0] if (len(tempversion) > 0) else ''
-            writefile = open(idfile, mode='w+')
-            writefile.write('id="'+str(tempcheck)+'"name="'+namecheck+'"version="'+versioncheck+'"')
-            writefile.close()
-            localfile = open(startuppath, mode='r')
-            content = file.read(localfile)
-            file.close(localfile)
-            localversionmatch = re.compile('version="(.+?)"').findall(content)
-            localversioncheck  = localversionmatch[0] if (len(localversionmatch) > 0) else ''
-            replacefile = content.replace(localversioncheck,versioncheck)
-            writefile = open(startuppath, mode='w')
-            writefile.write(str(replacefile))
-            writefile.close()
-            os.remove(tempfile)
-            if localcopy == False:
-			    os.remove(lib)
-            dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','and choose install option 2 to apply the guisettings.xml.')        
-            xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+        dp.create("Community Builds","Downloading "+description +" build.",'', 'Please Wait')
+        lib=os.path.join(CBPATH, description+'.zip')
+        if not os.path.exists(CBPATH):
+            os.makedirs(CBPATH)
+        downloader.download(url, lib, dp)
+        readfile = open(CBADDONPATH, mode='r')
+        default_contents = readfile.read()
+        readfile.close()
+        READ_ZIP(lib)
+        dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
+        HOME = xbmc.translatePath(os.path.join('special://','home')) 
+        dp.update(0,"", "Extracting Zip Please Wait")
+        extract.all(lib,HOME,dp)
+        time.sleep(1)
+        localfile = open(tempfile, mode='r')
+        content = file.read(localfile)
+        file.close(localfile)
+        temp = re.compile('id="(.+?)"').findall(content)
+        tempcheck  = temp[0] if (len(temp) > 0) else ''
+        tempname = re.compile('name="(.+?)"').findall(content)
+        namecheck  = tempname[0] if (len(tempname) > 0) else ''
+        tempversion = re.compile('version="(.+?)"').findall(content)
+        versioncheck  = tempversion[0] if (len(tempversion) > 0) else ''
+        writefile = open(idfile, mode='w+')
+        writefile.write('id="'+str(tempcheck)+'"name="'+namecheck+'"version="'+versioncheck+'"')
+        writefile.close()
+        localfile = open(startuppath, mode='r')
+        content = file.read(localfile)
+        file.close(localfile)
+        localversionmatch = re.compile('version="(.+?)"').findall(content)
+        localversioncheck  = localversionmatch[0] if (len(localversionmatch) > 0) else ''
+        replacefile = content.replace(localversioncheck,versioncheck)
+        writefile = open(startuppath, mode='w')
+        writefile.write(str(replacefile))
+        writefile.close()
+        os.remove(tempfile)
+        if localcopy == False:
+		    os.remove(lib)
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','and choose install option 2 to apply the guisettings.xml.')        
+        xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+        cbdefaultpy = open(CBADDONPATH, mode='w+')
+        cbdefaultpy.write(default_contents)
+        cbdefaultpy.close()
         # INSTALL_PART2(tempcheck)
         # localfile3 = open(INSTALL, mode='w+')
         # localfile3.write('guisettings still need copying over!"')
@@ -431,11 +438,11 @@ def RESTORE_COMMUNITY(name,url,description):
 #---------------------------------------------------------------------------------------------------
 #Function to restore a zip file 
 def CHECK_DOWNLOAD_PATH():
-    if not os.path.exists(zip):
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
-        ADDON.openSettings(sys.argv[0])
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
+        ADDON.openSettings(sys.argv[0])
+    if not os.path.exists(zip):
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
         ADDON.openSettings(sys.argv[0])
 #---------------------------------------------------------------------------------------------------
 #Function to restore a zip file 
@@ -948,7 +955,7 @@ def INSTALL_PART2(url):
 #---------------------------------------------------------------------------------------------------
 #Function to download guisettings.xml and merge with existing.
 def GUI_MERGE(url):
-        lib=os.path.join(zip, 'guifix.zip')
+        lib=os.path.join(USB, 'guifix.zip')
         dp.create("Community Builds","Downloading guisettings.xml",'', 'Please Wait')
         os.rename(GUI,GUINEW) #Rename guisettings.xml to guinew.xml so we can edit without XBMC interfering.
         downloader.download(url, lib, dp) #Download guisettings from the build

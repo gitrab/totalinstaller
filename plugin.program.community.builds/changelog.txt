@@ -2,6 +2,10 @@ TODO:
 - Add default skin field in database and show in community build install notification
 - Add download count to database and sort by popular or alphabetically in addon (do this via php)
 
+1.2.1:
+- Added some bug fixes, old default.py is copied over so the second part of install can be completed
+- Fixed bug with merge CB install not working
+
 1.2.0:
 - Fixed sleep bug in restore function (forgot to take it out of previous release)
 - Add File browser for choosing what backup to install

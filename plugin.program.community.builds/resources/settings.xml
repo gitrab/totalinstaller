@@ -17,13 +17,17 @@
 		<setting type="lsep" label="[CR]Also make sure you choose a location that XBMC/Kodi can write to."/>
 		<setting type="lsep" label="It is not possible to write to a network location."/>
 	</category>
-    <category label="Log Uploader">
-    	<setting id="email" type="text" label="E-Mail Address"/>
-		<setting type="lsep" label="Once your log is uploaded you will receive an email with the link."/>
-	</category>
     <category label="Adult Content">
         <setting id="adult" type="bool" label="Show builds with XXX content" default="false" />
 		<setting id="VERSION"   type="text"      label="Current Version"               default="0.0.0"  visible="false"/>
 		<setting id="VIDEO"     type="bool"      label="Video shown"                   default="false"  visible="false"/>
 	</category>
+    <category label="Maintenance">
+ 		<setting id="DEBUG" label="[B]Enable Debug Mode[/B]" type="bool" default="false"/>
+    	<setting id="email" type="text" label="E-Mail Address"/>
+		<setting type="lsep" label="[CR][CR][CR]"/>
+ 		<setting id="dummy" label="[B]Upload Log[/B]" type="action" action="XBMC.RunScript(special://home/addons/plugin.program.community.builds/uploadLog.py)"/>
+		<setting type="lsep" label="Once your log is uploaded you will receive an email with the link."/>
+        <setting id="dummy" label="RESET - use this option if you encounter errors opening the addon" type="action" action="RunScript($CWD/resetAddon.py)" />
+    </category>
 </settings>
