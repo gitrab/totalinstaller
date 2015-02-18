@@ -8,6 +8,7 @@ import downloader
 import plugintools
 import weblogin
 import zipfile
+import ntpath
 
 ARTPATH      =  'http://totalxbmc.tv/totalrevolution/art/' + os.sep
 FANART       =  'http://totalxbmc.tv/totalrevolution/art/fanart.jpg'
@@ -15,6 +16,7 @@ ADDON        =  xbmcaddon.Addon(id='plugin.program.community.builds')
 AddonID      =  'plugin.program.community.builds'
 AddonTitle   =  "[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]"
 zip          =  ADDON.getSetting('zip')
+localcopy    =  ADDON.getSetting('localcopy')
 dialog       =  xbmcgui.Dialog()
 dp           =  xbmcgui.DialogProgress()
 HOME         =  xbmc.translatePath('special://home/')
@@ -41,6 +43,7 @@ cookiepath   =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'cookiejar'))
 startuppath  =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'startup.xml'))
 tempfile     =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'temp.xml'))
 idfile       =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'id.xml'))
+idfiletemp   =  xbmc.translatePath(os.path.join(ADDON_DATA,AddonID,'idtemp.xml'))
 notifyart    =  xbmc.translatePath(os.path.join(ADDONS,AddonID,'resources/'))
 skin         =  xbmc.getSkinDir()
 EXCLUDES     =  ['plugin.program.community.builds']
@@ -165,12 +168,7 @@ def COMMUNITY_BACKUP():
     path = xbmc.translatePath(os.path.join(USB,'tempbackup'))
     if os.path.exists(path):
         shutil.rmtree(path)
-    if not os.path.exists(USB):
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
-        ADDON.openSettings(sys.argv[0])
-    if zip == '':
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
-        ADDON.openSettings(sys.argv[0])
+    CHECK_DOWNLOAD_PATH()
     vq = _get_keyboard( heading="Enter a name for this backup" )
     # if blank or the user cancelled the keyboard, return
     if ( not vq ): return False, 0
@@ -217,20 +215,18 @@ def BACKUP():
         os.makedirs(fullbackuppath)
     if os.path.exists(path):
         shutil.rmtree(path)
-    if not os.path.exists(zip):
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
-        ADDON.openSettings(sys.argv[0])
-    if zip == '':
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
-        ADDON.openSettings(sys.argv[0])
+    CHECK_DOWNLOAD_PATH()
     vq = _get_keyboard( heading="Enter a name for this backup" )
     # if blank or the user cancelled the keyboard, return
     if ( not vq ): return False, 0
     # we need to set the title to our query
     title = urllib.quote_plus(vq)
     to_backup = xbmc.translatePath(os.path.join('special://','home'))
-    backup_zip = xbmc.translatePath(os.path.join(fullbackuppath,title))
-    DeletePackages()    
+    backup_zip = xbmc.translatePath(os.path.join(fullbackuppath,title+'.zip'))
+    DeletePackages()
+    localfile = open(idfiletemp, mode='w+')
+    localfile.write('id="Local"name="'+title+'"')
+    localfile.close()
     dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Backing Up",'', 'Please Wait')
     zipobj = zipfile.ZipFile(backup_zip , 'w', zipfile.ZIP_DEFLATED)
     rootlen = len(to_backup)
@@ -306,12 +302,7 @@ def READ_ZIP(url):
 #---------------------------------------------------------------------------------------------------
 #Function to populate the search based on the initial first filter
 def COMMUNITY(url):
-    if not os.path.exists(zip):
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
-        ADDON.openSettings(sys.argv[0])
-    if zip == '':
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your backup storage folder.\nPlease update the addon settings and try again.','','')
-        ADDON.openSettings(sys.argv[0])
+    CHECK_DOWNLOAD_PATH()
     username = ADDON.getSetting('username')
     password = ADDON.getSetting('password')
     xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
@@ -379,12 +370,7 @@ def OPEN_URL(url):
 def RESTORE_COMMUNITY(name,url,description):
     import time
     myplatform = platform()
-    if not os.path.exists(zip):
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
-        ADDON.openSettings(sys.argv[0])
-    if zip == '':
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
-        ADDON.openSettings(sys.argv[0])
+    CHECK_DOWNLOAD_PATH()
     choice = xbmcgui.Dialog().yesno(name, 'We highly recommend backing up your existing build before', 'installing any community builds.', 'Would you like to perform a backup first?', nolabel='Backup',yeslabel='Install')
     if choice == 0:
         BACKUP()
@@ -395,7 +381,7 @@ def RESTORE_COMMUNITY(name,url,description):
             WipeInstall()
         if skin == "skin.confluence":
             dp.create("Community Builds","Downloading "+description +" build.",'', 'Please Wait')
-            lib=os.path.join(zip, 'community.zip')
+            lib=os.path.join(zip, 'Community Builds', description+'.zip')
             try: os.remove(lib)
             except: pass
             downloader.download(url, lib, dp)
@@ -427,6 +413,8 @@ def RESTORE_COMMUNITY(name,url,description):
             writefile.write(str(replacefile))
             writefile.close()
             os.remove(tempfile)
+            if localcopy == False:
+			    os.remove(lib)
             dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','and choose install option 2 to apply the guisettings.xml.')        
             xbmc.executebuiltin("ActivateWindow(appearancesettings)")
         # INSTALL_PART2(tempcheck)
@@ -442,30 +430,50 @@ def RESTORE_COMMUNITY(name,url,description):
 #       killxbmc()
 #---------------------------------------------------------------------------------------------------
 #Function to restore a zip file 
-def RESTORE():
-    import time
+def CHECK_DOWNLOAD_PATH():
     if not os.path.exists(zip):
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
         ADDON.openSettings(sys.argv[0])
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
         ADDON.openSettings(sys.argv[0])
-    lib=xbmc.translatePath(os.path.join(zip,'backup.zip'))
-    READ_ZIP(lib)
+#---------------------------------------------------------------------------------------------------
+#Function to restore a zip file 
+def RESTORE():
+    import time
+    CHECK_DOWNLOAD_PATH()
+    filename = xbmcgui.Dialog().browse(1, 'Select the backup file you want to restore', 'files', '.zip', False, False, USB)
+    if filename == '':
+        return
+    localfile = open(idfiletemp, mode='w+')
+    clean_title = ntpath.basename(filename)
+    localfile.write('id="Local"name="'+clean_title+'"')
+    localfile.close()
+    READ_ZIP(filename)
     dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
     HOME = xbmc.translatePath(os.path.join('special://','home'))   
     dp.update(0,"", "Extracting Zip Please Wait")
-    extract.all(lib,HOME,dp)
-    time.sleep(1)
-    dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete.', 'Now please change the skin to the','one this build was designed for.')        
+    extract.all(filename,HOME,dp)
+    localfile = open(idfile, mode='w+')
+    localfile.write('id="Local"name="Incomplete"')
+    localfile.close()
+    dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','to this addon and click the link to complete the setup.')        
     xbmc.executebuiltin("ActivateWindow(appearancesettings)")
-    sleep(10000)
-    xbmc.executebuiltin('UnloadSkin')
-    xbmc.executebuiltin("ReloadSkin")
-    dialog.ok("guisettings.xml fix complete", 'XBMC/Kodi will now close. When you load Kodi back up', 'you may need to switch your skin. Choose the skin this build was', 'designed for by going to System > Appearance > Skin.')
-    xbmc.executebuiltin("Quit")      
     # dialog.ok("Community Builds - Install Complete", 'To ensure the skin settings are set correctly XBMC will now', 'close. If XBMC doesn\'t close please force close (pull power', 'or force close in your OS - [COLOR=lime]DO NOT exit via XBMC menu[/COLOR])')
     # killxbmc()
+#---------------------------------------------------------------------------------------------------
+#Function to restore a zip file 
+def REMOVE_BUILD():
+    CHECK_DOWNLOAD_PATH()
+    filename = xbmcgui.Dialog().browse(1, 'Select the backup file you want to DELETE', 'files', '.zip', False, False, USB)
+    if filename == '':
+        return
+    clean_title = ntpath.basename(filename)
+    choice = xbmcgui.Dialog().yesno('Delete Backup File', 'This will completely remove '+clean_title, 'Are you sure you want to delete?', '', nolabel='No, Cancel',yeslabel='Yes, Delete')
+    if choice == 0:
+        return
+    elif choice == 1:
+        os.remove(filename)
 #---------------------------------------------------------------------------------------------------
 #Kill Commands - these will make sure guisettings.xml sticks.
 #ANDROID STILL NOT WORKING
@@ -538,17 +546,24 @@ def CATEGORIES(localbuildcheck,localversioncheck,id,unlocked):
     # else:
         if unlocked == 'yes':
             if id != 'None':
-                updatecheck = Check_For_Update(localbuildcheck,localversioncheck,id)
-                if updatecheck == True:
-                    addDir('[COLOR=dodgerblue]'+localbuildcheck+':[/COLOR] [COLOR=lime]NEW VERSION AVAILABLE[/COLOR]',id,'showinfo','','','','')
+                if id != 'Local':
+                    updatecheck = Check_For_Update(localbuildcheck,localversioncheck,id)
+                    if updatecheck == True:
+                         addDir('[COLOR=dodgerblue]'+localbuildcheck+':[/COLOR] [COLOR=lime]NEW VERSION AVAILABLE[/COLOR]',id,'showinfo','','','','')
+                    else:
+                         addDir('[COLOR=lime]Current Build Installed: [/COLOR][COLOR=dodgerblue]'+localbuildcheck+'[/COLOR]',id,'showinfo','','','','')
                 else:
-                    addDir('[COLOR=lime]Current Build Installed: [/COLOR][COLOR=dodgerblue]'+localbuildcheck+'[/COLOR]',id,'showinfo','','','','')
+                    if localbuildcheck == 'Incomplete':
+                        addDir('[COLOR=lime]Your last restore is not yet completed[/COLOR]','url',CHECK_LOCAL_INSTALL(),'','','','')
+                    else:
+                        addDir('[COLOR=lime]Current Build Installed: [/COLOR][COLOR=dodgerblue]Local Build ('+localbuildcheck+')[/COLOR]','','','','','','')
         else:
             addDir('[COLOR=lime]REGISTER FOR FREE TO UNLOCK FEATURES[/COLOR]','None','pop','','','','')
         addDir('[COLOR=orange]How To Use This Addon[/COLOR]','url','instructions','How_To.png','','','Instructions')
         addDir('Install Community Build','none','cb_root_menu','Community_Builds.png','','','Install Community Build')
         addDir('Backup My Content','url','backup_option','Backup.png','','','Back Up Your Data')
         addDir('Restore My Content','url','restore_option','Restore.png','','','Restore Your Data')
+        addDir('Delete Builds From Device','url','remove_build','Fresh_Start.png','','','Delete Build')
         addDir('Wipe My Setup (Fresh Start)','url','wipe_xbmc','Fresh_Start.png','','','Wipe your special XBMC/Kodi directory which will revert back to a vanillla build.')
 #---------------------------------------------------------------------------------------------------
 # Check local file version name and number against db
@@ -916,17 +931,12 @@ def COMMUNITY_MENU(url):
 #---------------------------------------------------------------------------------------------------
 #Option to download guisettings fix that merges with existing settings.
 def GUISETTINGS_FIX(url):
-    if not os.path.exists(zip):
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
-        ADDON.openSettings(sys.argv[0])
-    if zip == '':
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
-        ADDON.openSettings(sys.argv[0])
+    CHECK_DOWNLOAD_PATH()
     choice = xbmcgui.Dialog().yesno(name, 'This will over-write your existing guisettings.xml.', 'Are you sure this is the build you have installed?', '', nolabel='No, Cancel',yeslabel='Yes, Fix')
     if choice == 0:
         return
     elif choice == 1:
-	    GUI_MERGE(url)
+        GUI_MERGE(url)
 #---------------------------------------------------------------------------------------------------
 #Function to download guisettings.xml and merge with existing.
 def INSTALL_PART2(url):
@@ -1015,10 +1025,33 @@ def BACKUP_OPTION():
         addDir('Backup RssFeeds.xml',RSS,'resore_backup','Backup.png','','','Back Up Your RssFeeds.xml')
 #---------------------------------------------------------------------------------------------------
 #Create restore menu
+def CHECK_LOCAL_INSTALL():
+    localfile = open(idfile, mode='r')
+    content = file.read(localfile)
+    file.close(localfile)
+    localbuildmatch = re.compile('name="(.+?)"').findall(content)
+    localbuildcheck  = localbuildmatch[0] if (len(localbuildmatch) > 0) else ''
+    if localbuildcheck == "Incomplete":
+        choice = xbmcgui.Dialog().yesno("Finish Restore Process", 'If you\'re certain the correct skin has now been set click OK', 'to finish the install process, once complete XBMC/Kodi will', ' then close. Do you want to finish the install process?', yeslabel='Yes',nolabel='No')
+        if choice == 1:
+            FINISH_LOCAL_RESTORE()
+        elif choice ==0:
+            return
+#---------------------------------------------------------------------------------------------------
+def FINISH_LOCAL_RESTORE():
+    os.remove(idfile)
+    os.rename(idfiletemp,idfile)
+    xbmc.executebuiltin('UnloadSkin')    
+    xbmc.executebuiltin("ReloadSkin")
+    dialog.ok("Local Restore Complete", 'XBMC/Kodi will now close.', '', '')
+    xbmc.executebuiltin("Quit")      
+#---------------------------------------------------------------------------------------------------
+#Create restore menu
 def RESTORE_OPTION():
+    CHECK_LOCAL_INSTALL()
     if os.path.exists(os.path.join(USB,'backup.zip')):   
-        addDir('FULL RESTORE','url','restore','Restore.png','','','Back Up Your Full System')
-        
+        addDir('[COLOR=dodgerblue]FULL RESTORE[/COLOR]','url','restore','Restore.png','','','Back Up Your Full System')
+    
     if os.path.exists(os.path.join(USB,'addons.zip')):   
         addDir('Restore Your Addons','addons','restore_zip','Restore.png','','','Restore Your Addons')
 
@@ -1045,12 +1078,7 @@ def RESTORE_OPTION():
 #---------------------------------------------------------------------------------------------------
 #Function to restore a previously backed up zip, this includes full backup, addons or addon_data.zip
 def RESTORE_ZIP_FILE(url):
-    if not os.path.exists(zip):
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
-        ADDON.openSettings(sys.argv[0])        
-    if zip == '':
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your ZIP Folder.\nPlease update the addon settings and try again.','','')
-        ADDON.openSettings(sys.argv[0])
+    CHECK_DOWNLOAD_PATH()
     if 'addons' in url:
         ZIPFILE = xbmc.translatePath(os.path.join(USB,'addons.zip'))
         DIR = ADDONS
@@ -1197,22 +1225,43 @@ def WipeXBMC():
                         try: os.remove(os.path.join(root,name))
                         except:
                             if name not in ["Addons15.db","Addons16.db","MyVideos75.db","MyVideos78.db","MyVideos90.db","Textures13.db","xbmc.log","kodi.log"]: failed=True
+                            print "Failed to delete: "+root+"\\"+name
                     for name in dirs:
                         try: os.rmdir(os.path.join(root,name))
                         except:
-                            if name not in ["Database","userdata"]: failed=True
+                            print "Failed to delete: "+root+"\\"+name
+                REMOVE_EMPTY_FOLDERS()
                 if not failed:
                     print"community.builds.WipeXBMC All user files removed, you now have a clean install"
                     dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Wipe Successful, please restart XBMC/Kodi for changes to take effect.','','')
-                else: print"community.builds.WipeXBMC User files partially removed"
+                else:
+                    print"community.builds.WipeXBMC User files partially removed"
+                    dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Wipe Successful, please restart XBMC/Kodi for changes to take effect.','','')
             except:dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Problems detected, please check the log.','','')
+
+#---------------------------------------------------------------------------------------------------
+#Function to do remove all empty folders after delete       
+def REMOVE_EMPTY_FOLDERS():
+    for root, dirs, files in os.walk(HOME):
+        path = root.split('/')
+        for file in files:
+            process(os.path.join(root, file))
+            os.remove(os.path.join(root, file))
+    for dirpath, _, _ in os.walk(HOME, topdown=False):  # Listing the files
+        if dirpath == HOME:
+            break
+        try:
+            os.rmdir(dirpath)
+        except OSError as ex:
+            print(ex)
+            
 #---------------------------------------------------------------------------------------------------
 #Function to do a full wipe - this is called when doing a fresh CB install.
 #Thanks to kozz for working out how to add an exclude clause so community builds addon_data and addon isn't touched.
 def WipeInstall():
     if skin!= "skin.confluence":
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Please switch to the default Confluence skin','before performing a wipe.','')
-        xbmc.executebuiltin("ActivateWindow(appearancesettings)")    	
+        xbmc.executebuiltin("ActivateWindow(appearancesettings)")       
     else:
         choice = xbmcgui.Dialog().yesno("ABSOLUTELY CERTAIN?!!!", 'Are you absolutely certain you want to wipe this install?', '', 'All addons and settings will be completely wiped!', yeslabel='Yes',nolabel='No')
         if choice == 0:
@@ -1511,5 +1560,7 @@ elif mode=='guisettingsfix':
 elif mode=='showinfo':
         print "############   SHOW BASIC BUILD INFO   #################"
         SHOWINFO(url)
-
+elif mode=='remove_build':
+        print "############   SHOW BASIC BUILD INFO   #################"
+        REMOVE_BUILD()
 xbmcplugin.endOfDirectory(int(sys.argv[1]))

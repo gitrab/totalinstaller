@@ -9,6 +9,9 @@
 		<setting type="lsep" label="[CR]Visit [COLOR=lime]www.totalxbmc.tv[/COLOR] and click on the forum link."/>
    	</category>
     <category label="Backup Folder">
+		<setting id="localcopy" type="bool" label="Keep local copies of downloaded builds" default="false"/>
+		<setting type="lsep" label="Builds can be quite large, enabling this option could quickly fill up your storage."/>
+		<setting type="lsep" label="[CR][CR][CR]"/>
         <setting id="zip" type="folder"    label="Choose Backup Storage Location"      default=""/>
 		<setting type="lsep" label="[COLOR=red]DO NOT[/COLOR] use a location inside your XBMC/Kodi setup."/>
 		<setting type="lsep" label="[CR]Also make sure you choose a location that XBMC/Kodi can write to."/>

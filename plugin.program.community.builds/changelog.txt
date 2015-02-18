@@ -1,3 +1,16 @@
+TODO:
+- Add default skin field in database and show in community build install notification
+- Add download count to database and sort by popular or alphabetically in addon (do this via php)
+
+1.2.0:
+- Fixed sleep bug in restore function (forgot to take it out of previous release)
+- Add File browser for choosing what backup to install
+- Root menu will show the local backup you have installed
+- Remove all empty folders after wipe and also show notification, currently there is no notification once complete.
+- Add option to delete builds
+- Change download names so they aren't just generic community.zip
+- Add option in settings to keep downloaded community builds
+
 1.1.9:
 - Added check for wipe (fresh start). Now needs to be running Confluence otherwise will not wipe.
 - Fixed Force Close. No longer needed as we're now using UnloadSkin and ReloadSkin followed by clean exit. User just needs to switch to desired skin on next prior to doing step 2.
