@@ -1,6 +1,16 @@
 TODO:
-- Add default skin field in database and show in community build install notification
 - Add download count to database and sort by popular or alphabetically in addon (do this via php)
+
+1.2.5:
+- Add default skin field in database and show in community build install notification
+- Fixed community backup zip process for non-windows systems, also removes all that crap that Mac OS puts in zips!
+- Added error checking to see if the download path has write permissions
+- Fixed re-load profile issue so theoretically XBMC shouldn't require a restart after install.
+- Added a whole load more error checking
+- Made a new dialog to make it clearer what merge and wipe options do
+- moved guisettings.xml to addon_data folder so it's not deleted when choosing the wipe option when installing a CB
+- Think I've managed to fix the problem with Win8.1, have a feeling it was something to do with folders not being fully deleted.
+- Added a timer reminding the user to update the guisettings file.
 
 1.2.1:
 - Added some bug fixes, old default.py is copied over so the second part of install can be completed
