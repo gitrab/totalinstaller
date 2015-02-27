@@ -1,5 +1,14 @@
 TODO:
 - Add download count to database and sort by popular or alphabetically in addon (do this via php)
+- See if there's a way to not use shutil, maybe there's a way to remove items from a zip rather than pre-archive process?
+
+1.2.9:
+- Added additional tools section, has force close and fix paths to special. Also moved wipe and delete builds in there.
+- Fixed the problem with zips not showing when browsing for backups
+- Improved the backup code, although Android is still crapping out with the CB backup option - it really doesn't like the shutil command by the looks of it!
+- Added option to overwrite existing library databases or keep.
+- Added better notifications to stop users from rebooting when they think it's froze
+- Started work on hooks and sorted out loads of other error checking and bugs that I've forgotten about now
 
 1.2.5:
 - Add default skin field in database and show in community build install notification
