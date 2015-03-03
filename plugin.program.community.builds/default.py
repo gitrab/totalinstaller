@@ -1204,8 +1204,7 @@ def FINISH_LOCAL_RESTORE():
 #Create restore menu
 def RESTORE_OPTION():
     CHECK_LOCAL_INSTALL()
-    if os.path.exists(os.path.join(USB,'backup.zip')):   
-        addDir('[COLOR=dodgerblue]FULL RESTORE[/COLOR]','url','restore','Restore.png','','','Back Up Your Full System')
+    addDir('[COLOR=dodgerblue]FULL RESTORE[/COLOR]','url','restore','Restore.png','','','Back Up Your Full System')
     
     if os.path.exists(os.path.join(USB,'addons.zip')):   
         addDir('Restore Your Addons','addons','restore_zip','Restore.png','','','Restore Your Addons')
