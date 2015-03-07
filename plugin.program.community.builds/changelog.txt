@@ -1,6 +1,11 @@
 TODO:
 - Add download count to database and sort by popular or alphabetically in addon (do this via php)
 - See if there's a way to not use shutil, maybe there's a way to remove items from a zip rather than pre-archive process?
+- Move temporary id data to the settings.xml so it doesn't disappear when resetting the addon.
+
+1.3.1:
+- Added function to allow for profiles, it wasn't an easy one to work out but with gandelfs testing I think we got there!
+- Added option to install guisettings or community build from a locally stored file.
 
 1.2.9:
 - Added additional tools section, has force close and fix paths to special. Also moved wipe and delete builds in there.

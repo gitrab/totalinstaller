@@ -37,6 +37,7 @@ INSTALL      =  xbmc.translatePath(os.path.join(USERDATA,'install.xml'))
 FAVS         =  xbmc.translatePath(os.path.join(USERDATA,'favourites.xml'))
 SOURCE       =  xbmc.translatePath(os.path.join(USERDATA,'sources.xml'))
 ADVANCED     =  xbmc.translatePath(os.path.join(USERDATA,'advancedsettings.xml'))
+PROFILES     =  xbmc.translatePath(os.path.join(USERDATA,'profiles.xml'))
 RSS          =  xbmc.translatePath(os.path.join(USERDATA,'RssFeeds.xml'))
 KEYMAPS      =  xbmc.translatePath(os.path.join(USERDATA,'keymaps','keyboard.xml'))
 USB          =  xbmc.translatePath(os.path.join(zip))
@@ -480,7 +481,7 @@ def RESTORE_COMMUNITY(name,url,description,skins,guisettingslink):
             cbdefaultpy.write(default_contents)
             cbdefaultpy.close()
             try:
-			    os.rename(GUI,GUIFIX)
+                os.rename(GUI,GUIFIX)
             except:
                 print"NO GUISETTINGS DOWNLOADED"
             time.sleep(1)
@@ -590,6 +591,134 @@ def RESTORE():
     # dialog.ok("Community Builds - Install Complete", 'To ensure the skin settings are set correctly XBMC will now', 'close. If XBMC doesn\'t close please force close (pull power', 'or force close in your OS - [COLOR=lime]DO NOT exit via XBMC menu[/COLOR])')
     # killxbmc()
 #---------------------------------------------------------------------------------------------------
+#Function to restore a local copy of a CB file
+#### THIS CODE BLOCK SHOULD BE MERGED INTO THE RESTORE_COMMUNITY FUNCTION BUT I RAN OUT OF TIME TO DO IT CLEANLY ###
+def RESTORE_LOCAL_COMMUNITY():
+    import time
+    exitfunction=0
+    CHECK_DOWNLOAD_PATH()
+    filename = xbmcgui.Dialog().browse(1, 'Select the backup file you want to restore', 'files', '.zip', False, False, USB)
+    if filename == '':
+        return
+    if os.path.exists(GUINEW):
+        if os.path.exists(GUI):
+            os.remove(GUINEW)
+        else:
+            os.rename(GUINEW,GUI)
+    if os.path.exists(GUIFIX):
+        os.remove(GUIFIX)
+    if not os.path.exists(tempfile): #Function for debugging, creates a file that was created in previous call and subsequently deleted when run
+        localfile = open(tempfile, mode='w+')
+    if os.path.exists(guitemp):
+        os.removedirs(guitemp)
+    try: os.rename(GUI,GUINEW) #Rename guisettings.xml to guinew.xml so we can edit without XBMC interfering.
+    except:
+        dialog.ok("NO GUISETTINGS!",'No guisettings.xml file has been found.', 'Please exit XBMC and try again','')
+        return
+    choice = xbmcgui.Dialog().yesno(name, 'We highly recommend backing up your existing build before', 'installing any community builds.', 'Would you like to perform a backup first?', nolabel='Backup',yeslabel='Install')
+    if choice == 0:
+        BACKUP()
+    elif choice == 1:
+        dialog.ok('Would you like to MERGE or WIPE?','You will now have the option to merge or wipe...','[COLOR=lime]1) MERGE[/COLOR] the new build with your existing setup (keeps your addons and settings).','[COLOR=red]2) WIPE[/COLOR] your existing install and install a fresh build.')
+        choice2 = xbmcgui.Dialog().yesno(name, 'Would you like to merge with your existing build', 'or wipe your existing data and have a fresh', 'install with this new build?', nolabel='Merge',yeslabel='Wipe')
+        if choice2 == 0: pass
+        elif choice2 == 1:
+            WipeInstall()
+        if choice2 != 1 or (choice2 == 1 and skin == 'skin.confluence'):
+            choice3 = xbmcgui.Dialog().yesno(name, 'Would you like to keep your existing database', 'files or overwrite? Overwriting will wipe any', 'existing library you may have scanned in.', nolabel='Overwrite',yeslabel='Keep Existing')
+            if choice3 == 0: pass
+            elif choice3 == 1:
+                if os.path.exists(tempdbpath):
+                    shutil.rmtree(tempdbpath)
+                try:
+                    shutil.copytree(DATABASE, tempdbpath, symlinks=False, ignore=shutil.ignore_patterns("Textures13.db","Addons16.db","Addons15.db","saltscache.db-wal","saltscache.db-shm","saltscache.db","onechannelcache.db")) #Create temp folder for databases, give user option to overwrite existing library
+                except:
+                    choice4 = xbmcgui.Dialog().yesno(name, 'There was an error trying to backup some databases.', 'Continuing may wipe your existing library. Do you', 'wish to continue?', nolabel='No, cancel',yeslabel='Yes, overwrite')
+                    if choice4 == 1: pass
+                    if choice4 == 0: exitfunction=1;return
+                backup_zip = xbmc.translatePath(os.path.join(USB,'Database.zip'))
+                ARCHIVE_FILE(tempdbpath,backup_zip)
+            if exitfunction == 1: return
+            time.sleep(1)
+            readfile = open(CBADDONPATH, mode='r')
+            default_contents = readfile.read()
+            readfile.close()
+            READ_ZIP(filename)
+            dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
+            HOME = xbmc.translatePath(os.path.join('special://','home')) 
+            dp.update(0,"", "Extracting Zip Please Wait")
+            extract.all(filename,HOME,dp)
+            time.sleep(1)
+            cbdefaultpy = open(CBADDONPATH, mode='w+')
+            cbdefaultpy.write(default_contents)
+            cbdefaultpy.close()
+            try:
+                os.rename(GUI,GUIFIX)
+            except:
+                print"NO GUISETTINGS DOWNLOADED"
+            time.sleep(1)
+            localfile = open(GUINEW, mode='r') #Read the original skinsettings tags and store in memory ready to replace in guinew.xml
+            content = file.read(localfile)
+            file.close(localfile)
+            skinsettingsorig = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content)
+            skinorig  = skinsettingsorig[0] if (len(skinsettingsorig) > 0) else ''
+            skindefault = re.compile('<skin default[\s\S]*?<\/skin>').findall(content)
+            skindefaultorig  = skindefault[0] if (len(skindefault) > 0) else ''
+            lookandfeelorig = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content)
+            lookandfeel  = lookandfeelorig[0] if (len(lookandfeelorig) > 0) else ''
+            try:
+                localfile2 = open(GUIFIX, mode='r')
+                content2 = file.read(localfile2)
+                file.close(localfile2)
+                skinsettingscontent = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content2)
+                skinsettingstext  = skinsettingscontent[0] if (len(skinsettingscontent) > 0) else ''
+                skindefaultcontent = re.compile('<skin default[\s\S]*?<\/skin>').findall(content2)
+                skindefaulttext  = skindefaultcontent[0] if (len(skindefaultcontent) > 0) else ''
+                lookandfeelcontent = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content2)
+                lookandfeeltext  = lookandfeelcontent[0] if (len(lookandfeelcontent) > 0) else ''
+                replacefile = content.replace(skinorig,skinsettingstext).replace(lookandfeel,lookandfeeltext).replace(skindefaultorig,skindefaulttext)
+                writefile = open(GUINEW, mode='w+')
+                writefile.write(str(replacefile))
+                writefile.close()
+            except:
+                print"NO GUISETTINGS DOWNLOADED"
+            if os.path.exists(GUI):
+                os.remove(GUI)
+            os.rename(GUINEW,GUI)
+            try:
+                os.remove(GUIFIX)
+            except:
+                pass
+            if choice3 == 1:
+                extract.all(backup_zip,DATABASE,dp) #This folder first needs zipping up
+                if choice4 !=1:
+                    shutil.rmtree(tempdbpath)
+            #    os.remove(backup_zip)
+            os.makedirs(guitemp)
+            time.sleep(1)
+            xbmc.executebuiltin('UnloadSkin()') 
+            time.sleep(1)
+            xbmc.executebuiltin('ReloadSkin()')
+            time.sleep(1)
+            xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+            while xbmc.executebuiltin("Window.IsActive(appearancesettings)"):
+                xbmc.sleep(500)
+            try: xbmc.executebuiltin("LoadProfile(Master user)")
+            except: pass
+            dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','to this addon and restore the guisettings_fix.zip')        
+            xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+#---------------------------------------------------------------------------------------------------
+#Function to restore a local copy of guisettings_fix
+def RESTORE_LOCAL_GUI():
+    import time
+    CHECK_DOWNLOAD_PATH()
+    guifilename = xbmcgui.Dialog().browse(1, 'Select the guisettings zip file you want to restore', 'files', '.zip', False, False, USB)
+    if guifilename == '':
+        return
+    else:
+        local=1
+        GUISETTINGS_FIX(guifilename,local)  
+#---------------------------------------------------------------------------------------------------
 #Function to restore a zip file 
 def REMOVE_BUILD():
     CHECK_DOWNLOAD_PATH()
@@ -674,8 +803,8 @@ def killxbmc():
 #---------------------------------------------------------------------------------------------------
 #Root menu of addon
 def CATEGORIES(localbuildcheck,localversioncheck,id,unlocked):
-    if os.path.exists(factory):
-        FACTORY()
+#    if os.path.exists(factory):
+#        FACTORY()
     if unlocked == 'yes':
         if id != 'None':
             if id != 'Local':
@@ -1082,13 +1211,13 @@ def COMMUNITY_MENU(url):
         addDir('[COLOR=dodgerblue]Install 2: Apply guisettings.xml fix[/COLOR]',guisettingslink,'guisettingsfix','FixMy_Build.png',fanart,'','')
 #---------------------------------------------------------------------------------------------------
 #Option to download guisettings fix that merges with existing settings.
-def GUISETTINGS_FIX(url):
+def GUISETTINGS_FIX(url,local):
     CHECK_DOWNLOAD_PATH()
     choice = xbmcgui.Dialog().yesno(name, 'This will over-write your existing guisettings.xml.', 'Are you sure this is the build you have installed?', '', nolabel='No, Cancel',yeslabel='Yes, Fix')
     if choice == 0:
         return
     elif choice == 1:
-        GUI_MERGE(url)
+        GUI_MERGE(url,local)
 #---------------------------------------------------------------------------------------------------
 #Function to download guisettings.xml and merge with existing.
 def INSTALL_PART2(url):
@@ -1099,18 +1228,46 @@ def INSTALL_PART2(url):
     GUI_MERGE(guisettingslink)
 #---------------------------------------------------------------------------------------------------
 #Function to download guisettings.xml and merge with existing.
-def GUI_MERGE(url):
+def GUI_MERGE(url,local):
+    profiles_included=0
+    keep_profiles=1
+    if os.path.exists(GUINEW):
+        os.remove(GUINEW)
     if os.path.exists(GUIFIX):
         os.remove(GUIFIX)
-    lib=os.path.join(USB, 'guifix.zip')
+    if os.path.exists(PROFILES):
+        os.remove(PROFILES)
+    if not os.path.exists(guitemp):
+        os.makedirs(guitemp)
     dp.create("Community Builds","Downloading guisettings.xml",'', 'Please Wait')
     os.rename(GUI,GUINEW) #Rename guisettings.xml to guinew.xml so we can edit without XBMC interfering.
-    downloader.download(url, lib, dp) #Download guisettings from the build
+    if local!=1:
+        lib=os.path.join(USB, 'guifix.zip')
+        downloader.download(url, lib, dp) #Download guisettings from the build
+    else:
+        lib=xbmc.translatePath(url)
     READ_ZIP(lib)
     dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
     dp.update(0,"", "Extracting Zip Please Wait")
-    extract.all(lib,USERDATA,dp)
-    os.rename(GUI,GUIFIX)
+    extract.all(lib,guitemp,dp)
+    try:
+        readfile = open(guitemp+'profiles.xml', mode='r')
+        default_contents = readfile.read()
+        readfile.close()
+        if os.path.exists(guitemp+'profiles.xml'):
+            choice = xbmcgui.Dialog().yesno("PROFILES DETECTED", 'This build has profiles included, would you like to overwrite', 'your existing profiles or keep the ones you have?', '', nolabel='Keep my profiles',yeslabel='Use new profiles')
+            if choice == 0:
+                pass
+            elif choice == 1:
+                writefile = open(PROFILES, mode='w')
+                time.sleep(1)
+                writefile.write(default_contents)
+                time.sleep(1)
+                writefile.close()
+                keep_profiles=0
+    except: print"no profiles.xml file"
+    os.rename(guitemp+'guisettings.xml',GUIFIX) #Copy to addon_data folder so profiles can be dealt with
+ # had to move elsewhere in case a profiles.xml is included  os.rename(GUI,GUIFIX) 
     time.sleep(1)
     localfile = open(GUINEW, mode='r') #Read the original skinsettings tags and store in memory ready to replace in guinew.xml
     content = file.read(localfile)
@@ -1138,18 +1295,23 @@ def GUI_MERGE(url):
         os.remove(GUI)
     os.rename(GUINEW,GUI)
     os.remove(GUIFIX)
-    if os.path.exists(guitemp):
-        os.removedirs(guitemp)
-        # if os.path.exists(INSTALL):
+    if os.path.exists(guitemp+'profiles.xml'):
+        os.remove(guitemp+'profiles.xml')
+    if keep_profiles==0:
+        dialog.ok("PROFILES DETECTED", 'Unfortunately the only way to get the new profiles to stick is', 'to force close kodi. Either do this via the task manager,', 'terminal or system settings. DO NOT use the quit/exit options in Kodi.')
+        killxbmc()
+       # if os.path.exists(INSTALL):
             # os.remove(INSTALL)
         # if os.path.exists(AUTOEXEC):
             # os.remove(AUTOEXEC)
         # if os.path.exists(AUTOEXECBAK):
             # os.rename(AUTOEXECBAK,AUTOEXEC)
-    xbmc.executebuiltin('UnloadSkin')    
-    xbmc.executebuiltin("ReloadSkin")
-    dialog.ok("guisettings.xml fix complete", 'Please restart Kodi. If the skin does\'t look', 'quite right on the next boot you may need to', 'force close Kodi.')
-#        killxbmc()
+#    xbmc.executebuiltin('UnloadSkin')    
+#    xbmc.executebuiltin("ReloadSkin")
+    else:
+        dialog.ok("guisettings.xml fix complete", 'Please restart Kodi. If the skin does\'t look', 'quite right on the next boot you may need to', 'force close Kodi.')
+    if os.path.exists(guitemp):
+        os.removedirs(guitemp)
 #---------------------------------------------------------------------------------------------------
 #Show full description of build
 def DESCRIPTION(name,url,buildname,author,version,description,updated,skins,videoaddons,audioaddons,programaddons,pictureaddons,sources,adult):
@@ -1204,6 +1366,8 @@ def FINISH_LOCAL_RESTORE():
 #Create restore menu
 def RESTORE_OPTION():
     CHECK_LOCAL_INSTALL()
+    addDir('[COLOR=lime]RESTORE LOCAL COMMUNITY BUILD[/COLOR]','url','restore_local_CB','Restore.png','','','Back Up Your Full System')
+    addDir('[COLOR=lime]RESTORE LOCAL GUISETTINGS_FIX[/COLOR]','url','restore_local_gui','Restore.png','','','Back Up Your Full System')
     addDir('[COLOR=dodgerblue]FULL RESTORE[/COLOR]','url','restore','Restore.png','','','Back Up Your Full System')
     
     if os.path.exists(os.path.join(USB,'addons.zip')):   
@@ -1546,6 +1710,7 @@ audioaddons=None
 programaddons=None
 audioaddons=None
 sources=None
+local=None
 
 try:
         url=urllib.unquote_plus(params["url"])
@@ -1593,6 +1758,10 @@ except:
         pass
 try:
         pictureaddons=urllib.unquote_plus(params["pictureaddons"])
+except:
+        pass
+try:
+        local=urllib.unquote_plus(params["local"])
 except:
         pass
 try:
@@ -1719,7 +1888,7 @@ elif mode=='community_search':
         COMMUNITY_SEARCH()
 elif mode=='guisettingsfix':
         print "############   GUISETTINGS FIX   #################"
-        GUISETTINGS_FIX(url)
+        GUISETTINGS_FIX(url,local)
 elif mode=='showinfo':
         print "############   SHOW BASIC BUILD INFO   #################"
         SHOWINFO(url)
@@ -1732,4 +1901,10 @@ elif mode=='kill_xbmc':
 elif mode=='fix_special':
         print "############   FIX SPECIAL PATHS   #################"
         FIX_SPECIAL(url)
+elif mode=='restore_local_CB':
+        print "############   FIX SPECIAL PATHS   #################"
+        RESTORE_LOCAL_COMMUNITY()
+elif mode=='restore_local_gui':
+        print "############   FIX SPECIAL PATHS   #################"
+        RESTORE_LOCAL_GUI()
 xbmcplugin.endOfDirectory(int(sys.argv[1]))
