@@ -34,8 +34,7 @@ def CheckPath():
         os.removedirs(path)
         d.ok('[COLOR=lime]SUCCESS[/COLOR]', 'Great news, the path you chose is writeable.', 'Some of these builds are rather big, we recommend', 'a minimum of 1GB storage space.')
     except:
-        d.ok('[COLOR=red]CANNOT WRITE TO PATH[/COLOR]', 'Kodi cannot write to the path you\'ve chosen. Try choosing', 'a path with write permissions such as a USB stick.', '')
-
+        d.ok('[COLOR=red]CANNOT WRITE TO PATH[/COLOR]', 'Kodi cannot write to the path you\'ve chosen. Please click OK', 'in the settings menu to save the path then try again.', 'Some devices give false results, we recommend using a USB stick as the backup path.')
 
 if __name__ == '__main__':
     CheckPath()

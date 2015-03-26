@@ -1,7 +1,23 @@
 TODO:
-- Add download count to database and sort by popular or alphabetically in addon (do this via php)
 - See if there's a way to not use shutil, maybe there's a way to remove items from a zip rather than pre-archive process?
 - Move temporary id data to the settings.xml so it doesn't disappear when resetting the addon.
+
+1.3.2:
+- Added download count to database, can now sort by most popular, alphabetically, latest and recently updated.
+- Added option for private builds, these builds can be added to the CB Portal and marked as private and are only accessible with a password
+- Added option for reseller builds, these builds can be added to the CB Portal and marked as private and are only accessible with a password
+- Added function that updates the build details when applying guisettings fix.
+- Added notification that shows if the build is only partially installed.
+- Fixed the log uploader so it works with the new API at xbmclogs.com
+- Fixed annoying bug with download path check appearing twice.
+- Added check for Android explaining the download check results may be incorrect.
+- Wasn't deleting builds even if checked in addon settings, now fixed.
+- Added option to open addon settings directly from the addon menu
+- Hopefully fixed the bug with script errors occasionally occuring on startup. Think it was to do with some unfinished code, now commented out.
+- Added the ability to copy the profiles.xml file when creating a backup, no need to manually create anymore.
+- Added better progress dialogs for when creating a backup
+- Added the ability to show up to 5 video guides as well as a preview video - see the gandelf kids version for a good example.
+- Removed the warning dialog when clicking on restore menu, kept popping up during the backup process.
 
 1.3.1:
 - Added function to allow for profiles, it wasn't an easy one to work out but with gandelfs testing I think we got there!

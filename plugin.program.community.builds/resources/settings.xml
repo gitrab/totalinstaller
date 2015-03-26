@@ -18,13 +18,18 @@
 		<setting type="lsep" label="[CR]Also make sure you choose a location that XBMC/Kodi can write to."/>
 		<setting type="lsep" label="It is not possible to write to a network location."/>
 	</category>
-    <category label="Adult Content">
+    <category label="Extra Content">
+        <setting id="private" type="bool" label="Show private content" default="false" />
+		<setting id="privateuser" label="Collection Name" type="text" default="" visible="true"  enable="!eq(-1,false)"/>
+		<setting id="keyid" label="Password" type="text" default="" visible="true"  enable="!eq(-2,false)"/>
+        <setting id="reseller" type="bool" label="Enable premium reseller mode" default="false" />
+		<setting id="resellername" label="Reseller ID" type="text" default="" visible="true"  enable="!eq(-1,false)"/>
+		<setting id="resellerid" label="Password" type="text" default="" visible="true"  enable="!eq(-2,false)"/>
         <setting id="adult" type="bool" label="Show builds with XXX content" default="false" />
 		<setting id="VERSION"   type="text"      label="Current Version"               default="0.0.0"  visible="false"/>
 		<setting id="VIDEO"     type="bool"      label="Video shown"                   default="false"  visible="false"/>
 	</category>
     <category label="Maintenance">
- 		<setting id="DEBUG" label="[B]Enable Debug Mode[/B]" type="bool" default="false"/>
     	<setting id="email" type="text" label="E-Mail Address"/>
 		<setting type="lsep" label="[CR][CR][CR]"/>
  		<setting id="dummy" label="[B]Upload Log[/B]" type="action" action="XBMC.RunScript(special://home/addons/plugin.program.community.builds/uploadLog.py)"/>
