@@ -4,8 +4,8 @@ import urllib2,urllib
 import re
 import extract
 import time
+import CheckPath
 import downloader
-import plugintools
 import weblogin
 import zipfile
 import ntpath
@@ -23,6 +23,7 @@ privateuser  =  ADDON.getSetting('privateuser')
 reseller     =  ADDON.getSetting('reseller')
 resellername =  ADDON.getSetting('resellername')
 resellerid   =  ADDON.getSetting('resellerid')
+mastercopy   =  ADDON.getSetting('mastercopy')
 dialog       =  xbmcgui.Dialog()
 dp           =  xbmcgui.DialogProgress()
 HOME         =  xbmc.translatePath('special://home/')
@@ -61,14 +62,12 @@ login        =  ADDON.getSetting('login')
 userdatafolder = xbmc.translatePath(os.path.join(ADDON_DATA,AddonID))
 GUINEW       =  xbmc.translatePath(os.path.join(userdatafolder,'guinew.xml'))
 guitemp      =  xbmc.translatePath(os.path.join(userdatafolder,'guitemp',''))
-factory      =  xbmc.translatePath(os.path.join(HOME,'..','factory','_DO_NOT_DELETE.txt'))
 tempdbpath   =  xbmc.translatePath(os.path.join(USB,'Database'))
 urlbase      =  'None'
 #-----------------------------------------------------------------------------------------------------------------    
 #Simple shortcut to create a notification
 def Notify(title,message,times,icon):
     icon = notifyart+icon
-    print "icon: "+str(icon)
     xbmc.executebuiltin("XBMC.Notification("+title+","+message+","+times+","+icon+")")
 #-----------------------------------------------------------------------------------------------------------------    
 #Popup class - thanks to whoever codes the help popup in TVAddons Maintenance for this section. Unfortunately there doesn't appear to be any author details in that code so unable to credit by name.
@@ -90,7 +89,6 @@ def pop():
 #-----------------------------------------------------------------------------------------------------------------    
 #Initial online check for new video
 def VideoCheck():
-    print skin
     import yt
     unlocked = 'no'
     if not os.path.exists(userdatafolder):
@@ -107,12 +105,8 @@ def VideoCheck():
     link = OPEN_URL(BaseURL).replace('\n','').replace('\r','')
     datecheckmatch = re.compile('date="(.+?)"').findall(link)
     videomatch = re.compile('video="https://www.youtube.com/watch\?v=(.+?)"').findall(link)
-#    splashmatch = re.compile('splash="(.+?)"').findall(link)
-#    splashmatch2 = re.compile('splash2="(.+?)"').findall(link)
     datecheck  = datecheckmatch[0] if (len(datecheckmatch) > 0) else ''
     videocheck  = videomatch[0] if (len(videomatch) > 0) else ''
-#    splashcheck  = splashmatch[0] if (len(splashmatch) > 0) else ''
-#    splashcheck2  = splashmatch2[0] if (len(splashmatch2) > 0) else ''
 
     localfile = open(startuppath, mode='r')
     content = file.read(localfile)
@@ -128,11 +122,6 @@ def VideoCheck():
     localidcheck  = localidmatch[0] if (len(localidmatch) > 0) else 'None'
     localbuildmatch = re.compile('name="(.+?)"').findall(content2)
     localbuildcheck  = localbuildmatch[0] if (len(localbuildmatch) > 0) else ''
-    print "localbuildmatch: "+str(localbuildmatch)
-    print "localbuildcheck: "+str(localbuildcheck)
-    # if localidcheck == "None":
-        # if os.path.exists(INSTALL):
-            # os.remove(INSTALL)
     if  int(localdatecheck) < int(datecheck):
         replacefile = content.replace(localdatecheck,datecheck)
         writefile = open(startuppath, mode='w')
@@ -157,7 +146,7 @@ def VideoCheck():
     CATEGORIES(localbuildcheck,localversioncheck,localidcheck,unlocked)
 #-----------------------------------------------------------------------------------------------------------------    
 #Function to create a text box
-def TextBoxes(heading,anounce):
+def TextBoxes(heading,announce):
   class TextBox():
     WINDOW=10147
     CONTROL_LABEL=1
@@ -169,49 +158,74 @@ def TextBoxes(heading,anounce):
       self.setControls()
     def setControls(self):
       self.win.getControl(self.CONTROL_LABEL).setLabel(heading) # set heading
-      try: f=open(anounce); text=f.read()
-      except: text=anounce
+      try: f=open(announce); text=f.read()
+      except: text=announce
       self.win.getControl(self.CONTROL_TEXTBOX).setText(str(text))
       return
   TextBox()
 #---------------------------------------------------------------------------------------------------
 #Create a community (universal) backup - this renames paths to special:// and removes unwanted folders
-def COMMUNITY_BACKUP():  
+def COMMUNITY_BACKUP():
+    guisuccess=1
     CHECK_DOWNLOAD_PATH()
-    path = xbmc.translatePath(os.path.join(USB,'tempbackup'))
     fullbackuppath = xbmc.translatePath(os.path.join(USB,'Community Builds','My Builds',''))
+    myfullbackup = xbmc.translatePath(os.path.join(USB,'Community Builds','My Builds','my_full_backup.zip'))
+    myfullbackupGUI = xbmc.translatePath(os.path.join(USB,'Community Builds','My Builds','my_full_backup_GUI_Settings.zip'))
     if not os.path.exists(fullbackuppath):
         os.makedirs(fullbackuppath)
-    if os.path.exists(path):
-        shutil.rmtree(path)
     vq = _get_keyboard( heading="Enter a name for this backup" )
-    # if blank or the user cancelled the keyboard, return
     if ( not vq ): return False, 0
-    # we need to set the title to our query
     title = urllib.quote_plus(vq)
-    choice = xbmcgui.Dialog().yesno("VERY IMPORTANT", 'Do you want to include your addon_data folder?', 'This contains ALL addon settings including passwords.', 'We strongly recommend against this unless all data has been removed.', yeslabel='Yes',nolabel='No')
-    if choice == 1:
-        inc_data = ''
-    elif choice == 0:
-        inc_data = 'addon_data'
-    dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]",'[COLOR=dodgerblue]Copying files to [/COLOR][COLOR=yellow]'+path+'[/COLOR]','If you have a slow device or large build this may', 'take a while so you may want to go and make a cuppa...')
-    shutil.copytree(HOME, path, symlinks=False, ignore=shutil.ignore_patterns(inc_data,"cache","system","xbmc.log","xbmc.old.log","kodi.log","kodi.old.log","Thumbnails","Textures13.db","peripheral_data","library","keymaps","plugin.program.community.builds","packages",".DS_Store",".setup_complete","XBMCHelper.conf")) #Create temp folder ready for zipping
-    dp.close()
-    FIX_SPECIAL(path)
-    dialog.ok("Part 1 Complete", 'Successfully renamed your special paths and copied the', 'relevant files. If the following archiving process fails to', 'complete you can manually zip them up yourself on your PC, the files are located at: [COLOR=yellow]'+path+'[/COLOR]')
     backup_zip = xbmc.translatePath(os.path.join(fullbackuppath,title+'.zip'))
-    ARCHIVE_FILE(path,backup_zip)
-    dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Deleting temporary files",'', 'Please Wait')
+    exclude_dirs_full =  ['plugin.program.community.builds']
+    exclude_files_full = ["xbmc.log","xbmc.old.log","kodi.log","kodi.old.log",'.DS_Store','.setup_complete','XBMCHelper.conf']
+    exclude_dirs =  ['plugin.program.community.builds', 'cache', 'system', 'Thumbnails', "peripheral_data",'library','keymaps']
+    exclude_files = ["xbmc.log","xbmc.old.log","kodi.log","kodi.old.log","Textures13.db",'.DS_Store','.setup_complete','XBMCHelper.conf', 'advancedsettings.xml']
+    message_header = "Creating full backup of existing build"
+    message_header2 = "Creating Community Build"
+    message1 = "Archiving..."
+    message2 = ""
+    message3 = "Please Wait"
+    if mastercopy=='true':
+        ARCHIVE_CB(HOME, myfullbackup, message_header, message1, message2, message3, exclude_dirs_full, exclude_files_full)
+    choice = xbmcgui.Dialog().yesno("Do you want to include your addon_data folder?", 'This contains ALL addon settings including passwords.', 'If you\'re intending on sharing this with others we stongly', 'recommend against this unless all data has been manually removed.', yeslabel='Yes',nolabel='No')
+    if choice == 0:
+        DeletePackages()
+    elif choice == 1:
+        pass
+    FIX_SPECIAL(HOME)
+    ARCHIVE_CB(HOME, backup_zip, message_header2, message1, message2, message3, exclude_dirs, exclude_files)  
+    time.sleep(1)
     GUIname = xbmc.translatePath(os.path.join(fullbackuppath, title+'_guisettings.zip'))
     zf = zipfile.ZipFile(GUIname, mode='w')
-    zf.write(xbmc.translatePath(os.path.join(path,'userdata','guisettings.xml')), 'guisettings.xml', zipfile.ZIP_DEFLATED) #Copy guisettings.xml
     try:
-        zf.write(xbmc.translatePath(os.path.join(path,'userdata','profiles.xml')), 'profiles.xml', zipfile.ZIP_DEFLATED) #Copy profiles.xml
+        zf.write(GUI, 'guisettings.xml', zipfile.ZIP_DEFLATED) #Copy guisettings.xml
+    except: guisuccess=0
+    try:
+        zf.write(xbmc.translatePath(os.path.join(HOME,'userdata','profiles.xml')), 'profiles.xml', zipfile.ZIP_DEFLATED) #Copy profiles.xml
     except: pass
     zf.close()
-    shutil.rmtree(path)
-    dp.close()
-    dialog.ok("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] Community Builds[/B]", 'You Are Now Backed Up. If you\'d like to share this build with', 'the community please post details on the forum at', '[COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B]')
+    if mastercopy=='true':
+        zfgui = zipfile.ZipFile(myfullbackupGUI, mode='w')
+        try:
+            zfgui.write(GUI, 'guisettings.xml', zipfile.ZIP_DEFLATED) #Copy guisettings.xml
+        except: guisuccess=0
+
+        try:
+            zfgui.write(xbmc.translatePath(os.path.join(HOME,'userdata','profiles.xml')), 'profiles.xml', zipfile.ZIP_DEFLATED) #Copy profiles.xml
+        except: pass
+        zfgui.close()
+    if guisuccess == 0:
+        dialog.ok("FAILED!", 'The guisettings.xml file could not be found on your', 'system, please reboot and try again.', '')
+    else:
+        dialog.ok("SUCCESS!", 'You Are Now Backed Up. If you\'d like to share this build with', 'the community please post details on the forum at', '[COLOR=lime][B]www.totalxbmc.tv[/COLOR][/B]')
+        dialog.ok("Build Locations", 'Full Backup (only used to restore on this device): [COLOR=yellow]'+myfullbackup, '[/COLOR]Universal Backup (can be used on any device): [COLOR=yellow]'+backup_zip+'[/COLOR]')
+#---------------------------------------------------------------------------------------------------
+#Function to archive a single file
+def ARCHIVE_SINGLE(source,destination,filestructure):
+    zf = zipfile.ZipFile(destination, mode='w')
+    zf.write(source, filestructure, zipfile.ZIP_DEFLATED) #Copy guisettings.xml
+    zf.close()
 #---------------------------------------------------------------------------------------------------
 #Convert physical paths to special paths
 def FIX_SPECIAL(url):
@@ -225,34 +239,6 @@ def FIX_SPECIAL(url):
                  f = open((os.path.join(root, file)), mode='w')
                  f.write(str(b))
                  f.close()
-#---------------------------------------------------------------------------------------------------
-#Backup the full XBMC system
-def BACKUP():  
-    choice = xbmcgui.Dialog().yesno("Are you sure you want this option?", 'This is a FULL Backup for personal use only. If you', 'want to create a build that works universally and can', 'be restored via the addon use the Community Build option.', yeslabel='Continue',nolabel='Cancel')
-    if choice == 1:
-        pass
-    elif choice == 0:
-        return        
-    CHECK_DOWNLOAD_PATH()
-    path = xbmc.translatePath(os.path.join(USB,'tempbackup'))
-    fullbackuppath = xbmc.translatePath(os.path.join(USB,'Full Backup',''))
-    if not os.path.exists(fullbackuppath):
-        os.makedirs(fullbackuppath)
-    if os.path.exists(path):
-        shutil.rmtree(path)
-    vq = _get_keyboard( heading="Enter a name for this backup" )
-    # if blank or the user cancelled the keyboard, return
-    if ( not vq ): return False, 0
-    # we need to set the title to our query
-    title = urllib.quote_plus(vq)
-    to_backup = xbmc.translatePath(HOME)
-    backup_zip = xbmc.translatePath(os.path.join(fullbackuppath,title+'.zip'))
-    DeletePackages()
-    localfile = open(idfiletemp, mode='w+')
-    localfile.write('id="Local"\nname="'+title+'"')
-    localfile.close()
-    ARCHIVE_FILE(to_backup,backup_zip)
-    dialog.ok("Backup Complete", 'This is a FULL Backup for personal use only. It may', 'fail to restore via the addon, if you want a build that can', 'be restored via the addon use the Community Build option.')
 #---------------------------------------------------------------------------------------------------
 #Zip up tree
 def ARCHIVE_FILE(sourcefile, destfile):
@@ -281,6 +267,36 @@ def ARCHIVE_FILE(sourcefile, destfile):
     zipobj.close()
     dp.close()
 #---------------------------------------------------------------------------------------------------
+#Zip up tree
+# "[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Archiving...",'', 'Please Wait'
+def ARCHIVE_CB(sourcefile, destfile, message_header, message1, message2, message3, exclude_dirs, exclude_files):
+    zipobj = zipfile.ZipFile(destfile , 'w', zipfile.ZIP_DEFLATED)
+    rootlen = len(sourcefile)
+    for_progress = []
+    ITEM =[]
+    dp.create(message_header, message1, message2, message3)
+    for base, dirs, files in os.walk(sourcefile):
+        for file in files:
+            ITEM.append(file)
+    N_ITEM =len(ITEM)
+    for base, dirs, files in os.walk(sourcefile):
+        dirs[:] = [d for d in dirs if d not in exclude_dirs]
+        files[:] = [f for f in files if f not in exclude_files]
+        for file in files:
+            for_progress.append(file) 
+            progress = len(for_progress) / float(N_ITEM) * 100  
+            dp.update(int(progress),"Backing Up",'[COLOR yellow]%s[/COLOR]'%file, 'Please Wait')
+            fn = os.path.join(base, file)
+            if not 'temp' in dirs:
+                if not 'plugin.program.community.builds' in dirs:
+                   import time
+                   FORCE= '01/01/1980'
+                   FILE_DATE=time.strftime('%d/%m/%Y', time.gmtime(os.path.getmtime(fn)))
+                   if FILE_DATE > FORCE:
+                       zipobj.write(fn, fn[rootlen:])  
+    zipobj.close()
+    dp.close()
+#---------------------------------------------------------------------------------------------------
 #Read a zip file and extract the relevant data
 def READ_ZIP(url):
 
@@ -293,7 +309,6 @@ def READ_ZIP(url):
             r='<setting type="(.+?)" name="%s.(.+?)">(.+?)</setting>'% skin
             
             match=re.compile(r).findall(a)
-            print match
             for type,string,setting in match:
                 setting=setting.replace('&quot;','') .replace('&amp;','&') 
                 xbmc.executebuiltin("Skin.Set%s(%s,%s)"%(type.title(),string,setting))  
@@ -338,15 +353,6 @@ def FACTORY(localbuildcheck,localversioncheck,id,unlocked):
                     # addDir('[COLOR=lime]Current Build Installed: [/COLOR][COLOR=dodgerblue]'+localbuildcheck+'[/COLOR]',id,'showinfo','','','','')
 
 #---------------------------------------------------------------------------------------------------
-#Function to populate the search based on a second filter
-def COMMUNITY2(url):
-    print "COM2 START URL::"+str(url)
-    link = OPEN_URL(url).replace('\n','').replace('\r','')
-    match=re.compile('name="(.+?)"  <br> id="(.+?)"  <br> Thumbnail="(.+?)"  <br> Fanart="(.+?)"', re.DOTALL).findall(link)
-    addBuildDir('[COLOR=lime]Add another filter to the search[/COLOR]',url,'genres2','genres.png','','','','','')
-    for name,url,iconimage,fanart in match:
-        addBuildDir(name,url,'community_menu',iconimage,fanart,'','','','')
-#---------------------------------------------------------------------------------------------------
 #Function to populate the search based on the initial first filter
 def grab_builds(url):
     if zip == '':
@@ -365,18 +371,15 @@ def grab_builds(url):
         adult = ''
     else:
         adult = 'no'
-    buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortby.php?visibility=public&xbmc=%s&adult=%s&%s' % (xbmcversion, adult, url)
-    print"URL: "+buildsURL
+    buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortby.php?sortx=name&visibility=public&xbmc=%s&adult=%s&%s' % (xbmcversion, adult, url)
     link = OPEN_URL(buildsURL).replace('\n','').replace('\r','')
-    if urlbase != 'None':
-        addBuildDir('[COLOR=lime]Add another filter to the search[/COLOR]',urlbase,'genres2','genres.png','','','','','')
     match=re.compile('name="(.+?)"  <br> id="(.+?)"  <br> Thumbnail="(.+?)"  <br> Fanart="(.+?)"', re.DOTALL).findall(link)
-    SortBy(buildsURL)
+    SortBy(buildsURL,'public')
     for name,url,iconimage,fanart in match:
-        addBuildDir(name,url,'community_menu',iconimage,fanart,'','','','')
+        addBuildDir(name,url+'&visibility=public','community_menu',iconimage,fanart,'','','','')
 #---------------------------------------------------------------------------------------------------
 #Function to populate the search based on the initial first filter
-def PRIVATE_SEARCH(url):
+def grab_builds_premium(url):
     if zip == '':
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your backup storage folder.\nPlease update the addon settings and try again.','','')
         ADDON.openSettings(sys.argv[0])
@@ -391,17 +394,36 @@ def PRIVATE_SEARCH(url):
         adult = ''
     else:
         adult = 'no'
-    if url=='reseller':
-        buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortby.php?visibility=private&xbmc=%s&adult=%s&keyid=%s&username=%s' % (xbmcversion, adult, resellerid, resellername)	
-    if url=='private':
-        buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortby.php?visibility=private&xbmc=%s&adult=%s&keyid=%s&username=%s' % (xbmcversion, adult, keyid, privateuser)
-    print"URL: "+buildsURL
+    buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortby.php?sortx=name&visibility=reseller&xbmc=%s&adult=%s&token=%s&reseller=%s&%s' % (xbmcversion, adult, resellerid, urllib.quote(resellername), url) 
     link = OPEN_URL(buildsURL).replace('\n','').replace('\r','')
-    if urlbase != 'None':
-        addBuildDir('[COLOR=lime]Add another filter to the search[/COLOR]',urlbase,'genres2','genres.png','','','','','')
+    match=re.compile('name="(.+?)"  <br> id="(.+?)"  <br> Thumbnail="(.+?)"  <br> Fanart="(.+?)" ', re.DOTALL).findall(link)
+    SortBy(buildsURL,'reseller')
+    for name,url,iconimage,fanart in match:
+        addBuildDir(name,url+'&reseller='+urllib.quote(resellername)+'&token='+resellerid+'&visibility=reseller','community_menu',iconimage,fanart,'','','','')
+#---------------------------------------------------------------------------------------------------
+#Function to populate the search based on the initial first filter
+def PRIVATE_SEARCH(url):
+    if zip == '':
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','You have not set your backup storage folder.\nPlease update the addon settings and try again.','','')
+        ADDON.openSettings(sys.argv[0])
+    username = ADDON.getSetting('username')
+    password = ADDON.getSetting('password')
+    xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
+    version=float(xbmc_version[:4])
+    if version < 14:
+        xbmcversion = 'gotham'
+    else:
+        xbmcversion = 'helix'
+
+    if ADDON.getSetting('adult') == 'true':
+        adult = ''
+    else:
+        adult = 'no'
+    buildsURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/sortby.php?sortx=name&visibility=private&xbmc=%s&adult=%s&username=%s&keyid=%s&%s' % (xbmcversion, adult, privateuser, keyid, url)
+    link = OPEN_URL(buildsURL).replace('\n','').replace('\r','')
     match=re.compile('name="(.+?)"  <br> id="(.+?)"  <br> Thumbnail="(.+?)"  <br> Fanart="(.+?)"', re.DOTALL).findall(link)
     for name,url,iconimage,fanart in match:
-        addBuildDir(name,url,'community_menu',iconimage,fanart,'','','','')
+        addBuildDir(name,url+'&visibility=private&username='+privateuser+'&keyid='+keyid,'community_menu',iconimage,fanart,'','','','')
 #---------------------------------------------------------------------------------------------------
 #Function to read the contents of a URL
 def OPEN_URL(url):
@@ -413,11 +435,10 @@ def OPEN_URL(url):
     return link
 #---------------------------------------------------------------------------------------------------
 #Function to restore a community build
-def RESTORE_COMMUNITY(name,url,description,skins,guisettingslink):
+def RESTORE_COMMUNITY(name,url,video,description,skins,guisettingslink):
     import time
     choice4=1
     CHECK_DOWNLOAD_PATH()
-  #  lib=os.path.join(USB, 'guifix.zip')
     if os.path.exists(GUINEW):
         if os.path.exists(GUI):
             os.remove(GUINEW)
@@ -435,128 +456,152 @@ def RESTORE_COMMUNITY(name,url,description,skins,guisettingslink):
         return
     choice = xbmcgui.Dialog().yesno(name, 'We highly recommend backing up your existing build before', 'installing any community builds.', 'Would you like to perform a backup first?', nolabel='Backup',yeslabel='Install')
     if choice == 0:
-        BACKUP()
-    elif choice == 1:
-        dialog.ok('Would you like to MERGE or WIPE?','You will now have the option to merge or wipe...','[COLOR=lime]1) MERGE[/COLOR] the new build with your existing setup (keeps your addons and settings).','[COLOR=red]2) WIPE[/COLOR] your existing install and install a fresh build.')
-        choice2 = xbmcgui.Dialog().yesno(name, 'Would you like to merge with your existing build', 'or wipe your existing data and have a fresh', 'install with this new build?', nolabel='Merge',yeslabel='Wipe')
-        if choice2 == 0: pass
-        elif choice2 == 1:
-            WipeInstall()
-        if choice2 != 1 or (choice2 == 1 and skin == 'skin.confluence'):
-            choice3 = xbmcgui.Dialog().yesno(name, 'Would you like to keep your existing database', 'files or overwrite? Overwriting will wipe any', 'existing library you may have scanned in.', nolabel='Overwrite',yeslabel='Keep Existing')
-            if choice3 == 0: pass
-            elif choice3 == 1:
-                if os.path.exists(tempdbpath):
-                    shutil.rmtree(tempdbpath)
-                try:
-                    shutil.copytree(DATABASE, tempdbpath, symlinks=False, ignore=shutil.ignore_patterns("Textures13.db","Addons16.db","Addons15.db","saltscache.db-wal","saltscache.db-shm","saltscache.db","onechannelcache.db")) #Create temp folder for databases, give user option to overwrite existing library
-                except:
-                    choice4 = xbmcgui.Dialog().yesno(name, 'There was an error trying to backup some databases.', 'Continuing may wipe your existing library. Do you', 'wish to continue?', nolabel='No, cancel',yeslabel='Yes, overwrite')
-                    if choice4 == 1: pass
-                    if choice4 == 0: return
-                backup_zip = xbmc.translatePath(os.path.join(USB,'Database.zip'))
-                ARCHIVE_FILE(tempdbpath,backup_zip)
+        mybackuppath = xbmc.translatePath(os.path.join(USB,'Community Builds','My Builds'))
+        if not os.path.exists(mybackuppath):
+            os.makedirs(mybackuppath)
+        vq = _get_keyboard( heading="Enter a name for this backup" )
+        if ( not vq ): return False, 0
+        title = urllib.quote_plus(vq)
+        backup_zip = xbmc.translatePath(os.path.join(mybackuppath,title+'.zip'))
+        exclude_dirs_full =  ['plugin.program.community.builds']
+        exclude_files_full = ["xbmc.log","xbmc.old.log","kodi.log","kodi.old.log",'.DS_Store','.setup_complete','XBMCHelper.conf']
+        message_header = "Creating full backup of existing build"
+        message1 = "Archiving..."
+        message2 = ""
+        message3 = "Please Wait"
+        ARCHIVE_CB(HOME, backup_zip, message_header, message1, message2, message3, exclude_dirs_full, exclude_files_full)
+    choice3 = xbmcgui.Dialog().yesno(name, 'Would you like to keep your existing database', 'files or overwrite? Overwriting will wipe any', 'existing library you may have scanned in.', nolabel='Overwrite',yeslabel='Keep Existing')
+    if choice3 == 0: pass
+    elif choice3 == 1:
+        if os.path.exists(tempdbpath):
+            shutil.rmtree(tempdbpath)
+        try:
+            shutil.copytree(DATABASE, tempdbpath, symlinks=False, ignore=shutil.ignore_patterns("Textures13.db","Addons16.db","Addons15.db","saltscache.db-wal","saltscache.db-shm","saltscache.db","onechannelcache.db")) #Create temp folder for databases, give user option to overwrite existing library
+        except:
+            choice4 = xbmcgui.Dialog().yesno(name, 'There was an error trying to backup some databases.', 'Continuing may wipe your existing library. Do you', 'wish to continue?', nolabel='No, cancel',yeslabel='Yes, overwrite')
+            if choice4 == 1: pass
             if choice4 == 0: return
-            time.sleep(1)
-            dp.create("Community Builds","Downloading "+description +" build.",'', 'Please Wait')
-            lib=os.path.join(CBPATH, description+'.zip')
-            if not os.path.exists(CBPATH):
-                os.makedirs(CBPATH)
-            downloader.download(url, lib, dp)
-            readfile = open(CBADDONPATH, mode='r')
-            default_contents = readfile.read()
-            readfile.close()
-            READ_ZIP(lib)
-            dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
-            HOME = xbmc.translatePath(os.path.join('special://','home')) 
-            dp.update(0,"", "Extracting Zip Please Wait")
-            extract.all(lib,HOME,dp)
-            time.sleep(1)
-            localfile = open(tempfile, mode='r')
-            content = file.read(localfile)
-            file.close(localfile)
-            temp = re.compile('id="(.+?)"').findall(content)
-            tempcheck  = temp[0] if (len(temp) > 0) else ''
-            tempname = re.compile('name="(.+?)"').findall(content)
-            namecheck  = tempname[0] if (len(tempname) > 0) else ''
-            tempversion = re.compile('version="(.+?)"').findall(content)
-            versioncheck  = tempversion[0] if (len(tempversion) > 0) else ''
-            writefile = open(idfile, mode='w+')
-            writefile.write('id="'+str(tempcheck)+'"\nname="'+namecheck+' [COLOR=yellow](Partially installed)[/COLOR]"\nversion="'+versioncheck+'"')
-            writefile.close()
-            incremental = 'http://totalxbmc.tv/totalrevolution/Community_Builds/downloadcount.php?id=%s' % (tempcheck)
-            OPEN_URL(incremental)
-            localfile = open(startuppath, mode='r')
-            content = file.read(localfile)
-            file.close(localfile)
-            localversionmatch = re.compile('version="(.+?)"').findall(content)
-            localversioncheck  = localversionmatch[0] if (len(localversionmatch) > 0) else ''
-            replacefile = content.replace(localversioncheck,versioncheck)
-            writefile = open(startuppath, mode='w')
-            writefile.write(str(replacefile))
-            writefile.close()
-            os.remove(tempfile)
-            if localcopy == 'false':
-                os.remove(lib)
-            cbdefaultpy = open(CBADDONPATH, mode='w+')
-            cbdefaultpy.write(default_contents)
-            cbdefaultpy.close()
-            try:
-                os.rename(GUI,GUIFIX)
-            except:
-                print"NO GUISETTINGS DOWNLOADED"
-            time.sleep(1)
-            localfile = open(GUINEW, mode='r') #Read the original skinsettings tags and store in memory ready to replace in guinew.xml
-            content = file.read(localfile)
-            file.close(localfile)
-            skinsettingsorig = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content)
-            skinorig  = skinsettingsorig[0] if (len(skinsettingsorig) > 0) else ''
-            skindefault = re.compile('<skin default[\s\S]*?<\/skin>').findall(content)
-            skindefaultorig  = skindefault[0] if (len(skindefault) > 0) else ''
-            lookandfeelorig = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content)
-            lookandfeel  = lookandfeelorig[0] if (len(lookandfeelorig) > 0) else ''
-            try:
-                localfile2 = open(GUIFIX, mode='r')
-                content2 = file.read(localfile2)
-                file.close(localfile2)
-                skinsettingscontent = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content2)
-                skinsettingstext  = skinsettingscontent[0] if (len(skinsettingscontent) > 0) else ''
-                skindefaultcontent = re.compile('<skin default[\s\S]*?<\/skin>').findall(content2)
-                skindefaulttext  = skindefaultcontent[0] if (len(skindefaultcontent) > 0) else ''
-                lookandfeelcontent = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content2)
-                lookandfeeltext  = lookandfeelcontent[0] if (len(lookandfeelcontent) > 0) else ''
-                replacefile = content.replace(skinorig,skinsettingstext).replace(lookandfeel,lookandfeeltext).replace(skindefaultorig,skindefaulttext)
-                writefile = open(GUINEW, mode='w+')
-                writefile.write(str(replacefile))
-                writefile.close()
-            except:
-                print"NO GUISETTINGS DOWNLOADED"
-            if os.path.exists(GUI):
-                os.remove(GUI)
-            os.rename(GUINEW,GUI)
-            try:
-                os.remove(GUIFIX)
-            except:
-                pass
-            if choice3 == 1:
-                extract.all(backup_zip,DATABASE,dp) #This folder first needs zipping up
-                if choice4 !=1:
-                    shutil.rmtree(tempdbpath)
-            #    os.remove(backup_zip)
-            os.makedirs(guitemp)
-            time.sleep(1)
-            xbmc.executebuiltin('UnloadSkin()') 
-            time.sleep(1)
-            xbmc.executebuiltin('ReloadSkin()')
-            time.sleep(1)
-            xbmc.executebuiltin("ActivateWindow(appearancesettings)")
-            while xbmc.executebuiltin("Window.IsActive(appearancesettings)"):
-                xbmc.sleep(500)
-            try: xbmc.executebuiltin("LoadProfile(Master user)")
-            except: pass
-            dialog.ok('Step 1 complete','Change the skin to: [COLOR=lime]'+skins,'[/COLOR]Once done come back and choose install step 2 which will','re-install the guisettings.xml - this file contains all custom skin settings.')
-            xbmc.executebuiltin("ActivateWindow(appearancesettings)")
-            CHECK_GUITEMP(guisettingslink)
+        backup_zip = xbmc.translatePath(os.path.join(USB,'Database.zip'))
+        ARCHIVE_FILE(tempdbpath,backup_zip)
+    if choice4 == 0: return
+    time.sleep(1)
+    dp.create("Community Builds","Downloading "+description +" build.",'', 'Please Wait')
+    lib=os.path.join(CBPATH, description+'.zip')
+    if not os.path.exists(CBPATH):
+        os.makedirs(CBPATH)
+    downloader.download(url, lib, dp)
+    readfile = open(CBADDONPATH, mode='r')
+    default_contents = readfile.read()
+    readfile.close()
+    READ_ZIP(lib)
+    dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
+    dp.update(0,"", "Extracting Zip Please Wait")
+    extract.all(lib,HOME,dp)
+    time.sleep(1)
+    if video!='':
+        INSTALLART(video)
+    localfile = open(tempfile, mode='r')
+    content = file.read(localfile)
+    file.close(localfile)
+    temp = re.compile('id="(.+?)"').findall(content)
+    tempcheck  = temp[0] if (len(temp) > 0) else ''
+    tempname = re.compile('name="(.+?)"').findall(content)
+    namecheck  = tempname[0] if (len(tempname) > 0) else ''
+    tempversion = re.compile('version="(.+?)"').findall(content)
+    versioncheck  = tempversion[0] if (len(tempversion) > 0) else ''
+    writefile = open(idfile, mode='w+')
+    writefile.write('id="'+str(tempcheck)+'"\nname="'+namecheck+' [COLOR=yellow](Partially installed)[/COLOR]"\nversion="'+versioncheck+'"')
+    writefile.close()
+    incremental = 'http://totalxbmc.tv/totalrevolution/Community_Builds/downloadcount.php?id=%s' % (tempcheck)
+    OPEN_URL(incremental)
+    localfile = open(startuppath, mode='r')
+    content = file.read(localfile)
+    file.close(localfile)
+    localversionmatch = re.compile('version="(.+?)"').findall(content)
+    localversioncheck  = localversionmatch[0] if (len(localversionmatch) > 0) else ''
+    replacefile = content.replace(localversioncheck,versioncheck)
+    writefile = open(startuppath, mode='w')
+    writefile.write(str(replacefile))
+    writefile.close()
+    os.remove(tempfile)
+    if localcopy == 'false':
+        os.remove(lib)
+    cbdefaultpy = open(CBADDONPATH, mode='w+')
+    cbdefaultpy.write(default_contents)
+    cbdefaultpy.close()
+    try:
+        os.rename(GUI,GUIFIX)
+    except:
+        print"NO GUISETTINGS DOWNLOADED"
+    time.sleep(1)
+    localfile = open(GUINEW, mode='r') #Read the original skinsettings tags and store in memory ready to replace in guinew.xml
+    content = file.read(localfile)
+    file.close(localfile)
+    skinsettingsorig = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content)
+    skinorig  = skinsettingsorig[0] if (len(skinsettingsorig) > 0) else ''
+    skindefault = re.compile('<skin default[\s\S]*?<\/skin>').findall(content)
+    skindefaultorig  = skindefault[0] if (len(skindefault) > 0) else ''
+    lookandfeelorig = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content)
+    lookandfeel  = lookandfeelorig[0] if (len(lookandfeelorig) > 0) else ''
+    try:
+        localfile2 = open(GUIFIX, mode='r')
+        content2 = file.read(localfile2)
+        file.close(localfile2)
+        skinsettingscontent = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content2)
+        skinsettingstext  = skinsettingscontent[0] if (len(skinsettingscontent) > 0) else ''
+        skindefaultcontent = re.compile('<skin default[\s\S]*?<\/skin>').findall(content2)
+        skindefaulttext  = skindefaultcontent[0] if (len(skindefaultcontent) > 0) else ''
+        lookandfeelcontent = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content2)
+        lookandfeeltext  = lookandfeelcontent[0] if (len(lookandfeelcontent) > 0) else ''
+        replacefile = content.replace(skinorig,skinsettingstext).replace(lookandfeel,lookandfeeltext).replace(skindefaultorig,skindefaulttext)
+        writefile = open(GUINEW, mode='w+')
+        writefile.write(str(replacefile))
+        writefile.close()
+    except:
+        print"NO GUISETTINGS DOWNLOADED"
+    if os.path.exists(GUI):
+        os.remove(GUI)
+    os.rename(GUINEW,GUI)
+    try:
+        os.remove(GUIFIX)
+    except:
+        pass
+    if choice3 == 1:
+        extract.all(backup_zip,DATABASE,dp) #This folder first needs zipping up
+        if choice4 !=1:
+            shutil.rmtree(tempdbpath)
+    #    os.remove(backup_zip)
+    dp.close()
+    os.makedirs(guitemp)
+    time.sleep(1)
+    xbmc.executebuiltin('UnloadSkin()') 
+    time.sleep(1)
+    xbmc.executebuiltin('ReloadSkin()')
+    time.sleep(1)
+    xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+    while xbmc.executebuiltin("Window.IsActive(appearancesettings)"):
+        xbmc.sleep(500)
+    try: xbmc.executebuiltin("LoadProfile(Master user)")
+    except: pass
+    dialog.ok('Step 1 complete','Change the skin to: [COLOR=lime]'+skins,'[/COLOR]Once done come back and choose install step 2 which will','re-install the guisettings.xml - this file contains all custom skin settings.')
+    xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+    CHECK_GUITEMP(guisettingslink)
+#---------------------------------------------------------------------------------------------------
+#Installs special art for premium.
+def INSTALLART(path):
+    background_art = xbmc.translatePath(os.path.join('special://home','background_art',resellername))
+    artURL = path+urllib.quote(resellername)+'.zip?dl=1'
+    if not os.path.exists(background_art):
+        os.makedirs(background_art)
+    try:
+        dp.create("Installing Artwork","Downloading artwork pack",'', 'Please Wait')
+        artpack=os.path.join(USB, resellername+'_artpack.zip')
+        downloader.download(artURL, artpack, dp)
+        READ_ZIP(artpack)
+        dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
+        dp.update(0,"", "Extracting Zip Please Wait")
+        extract.all(artpack,background_art,dp)
+    except: pass
 #---------------------------------------------------------------------------------------------------
 #Check whether or not the guisettings fix has been done, loops on a timer.
 def CHECK_GUITEMP(url):
@@ -581,35 +626,12 @@ def CHECK_DOWNLOAD_PATH():
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','The download location you have stored does not exist .\nPlease update the addon settings and try again.','','')        
         ADDON.openSettings(sys.argv[0])
 #---------------------------------------------------------------------------------------------------
-#Function to restore a zip file 
-def RESTORE():
-    import time
-    CHECK_DOWNLOAD_PATH()
-    filename = xbmcgui.Dialog().browse(1, 'Select the backup file you want to restore', 'files', '.zip', False, False, USB)
-    if filename == '':
-        return
-    localfile = open(idfiletemp, mode='w+')
-    clean_title = ntpath.basename(filename)
-    localfile.write('id="Local"\nname="'+clean_title+'"')
-    localfile.close()
-    READ_ZIP(filename)
-    dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
-    HOME = xbmc.translatePath(os.path.join('special://','home'))   
-    dp.update(0,"", "Extracting Zip Please Wait")
-    extract.all(filename,HOME,dp)
-    localfile = open(idfile, mode='w+')
-    localfile.write('id="Local"\nname="Incomplete"')
-    localfile.close()
-    dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','to this addon and click the link to complete the setup.')        
-    xbmc.executebuiltin("ActivateWindow(appearancesettings)")
-    # dialog.ok("Community Builds - Install Complete", 'To ensure the skin settings are set correctly XBMC will now', 'close. If XBMC doesn\'t close please force close (pull power', 'or force close in your OS - [COLOR=lime]DO NOT exit via XBMC menu[/COLOR])')
-    # killxbmc()
-#---------------------------------------------------------------------------------------------------
 #Function to restore a local copy of a CB file
 #### THIS CODE BLOCK SHOULD BE MERGED INTO THE RESTORE_COMMUNITY FUNCTION BUT I RAN OUT OF TIME TO DO IT CLEANLY ###
 def RESTORE_LOCAL_COMMUNITY():
     import time
     exitfunction=0
+    choice4=0
     CHECK_DOWNLOAD_PATH()
     filename = xbmcgui.Dialog().browse(1, 'Select the backup file you want to restore', 'files', '.zip', False, False, USB)
     if filename == '':
@@ -629,102 +651,109 @@ def RESTORE_LOCAL_COMMUNITY():
     except:
         dialog.ok("NO GUISETTINGS!",'No guisettings.xml file has been found.', 'Please exit XBMC and try again','')
         return
-    choice = xbmcgui.Dialog().yesno(name, 'We highly recommend backing up your existing build before', 'installing any community builds.', 'Would you like to perform a backup first?', nolabel='Backup',yeslabel='Install')
+    choice = xbmcgui.Dialog().yesno(name, 'We highly recommend backing up your existing build before', 'installing any builds.', 'Would you like to perform a backup first?', nolabel='Backup',yeslabel='Install')
     if choice == 0:
-        BACKUP()
-    elif choice == 1:
-        dialog.ok('Would you like to MERGE or WIPE?','You will now have the option to merge or wipe...','[COLOR=lime]1) MERGE[/COLOR] the new build with your existing setup (keeps your addons and settings).','[COLOR=red]2) WIPE[/COLOR] your existing install and install a fresh build.')
-        choice2 = xbmcgui.Dialog().yesno(name, 'Would you like to merge with your existing build', 'or wipe your existing data and have a fresh', 'install with this new build?', nolabel='Merge',yeslabel='Wipe')
-        if choice2 == 0: pass
-        elif choice2 == 1:
-            WipeInstall()
-        if choice2 != 1 or (choice2 == 1 and skin == 'skin.confluence'):
-            choice3 = xbmcgui.Dialog().yesno(name, 'Would you like to keep your existing database', 'files or overwrite? Overwriting will wipe any', 'existing library you may have scanned in.', nolabel='Overwrite',yeslabel='Keep Existing')
-            if choice3 == 0: pass
-            elif choice3 == 1:
-                if os.path.exists(tempdbpath):
-                    shutil.rmtree(tempdbpath)
-                try:
-                    shutil.copytree(DATABASE, tempdbpath, symlinks=False, ignore=shutil.ignore_patterns("Textures13.db","Addons16.db","Addons15.db","saltscache.db-wal","saltscache.db-shm","saltscache.db","onechannelcache.db")) #Create temp folder for databases, give user option to overwrite existing library
-                except:
-                    choice4 = xbmcgui.Dialog().yesno(name, 'There was an error trying to backup some databases.', 'Continuing may wipe your existing library. Do you', 'wish to continue?', nolabel='No, cancel',yeslabel='Yes, overwrite')
-                    if choice4 == 1: pass
-                    if choice4 == 0: exitfunction=1;return
-                backup_zip = xbmc.translatePath(os.path.join(USB,'Database.zip'))
-                ARCHIVE_FILE(tempdbpath,backup_zip)
-            if exitfunction == 1: return
-            time.sleep(1)
-            readfile = open(CBADDONPATH, mode='r')
-            default_contents = readfile.read()
-            readfile.close()
-            READ_ZIP(filename)
-            dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
-            HOME = xbmc.translatePath(os.path.join('special://','home')) 
-            dp.update(0,"", "Extracting Zip Please Wait")
-            extract.all(filename,HOME,dp)
-            time.sleep(1)
-            clean_title = ntpath.basename(filename)
-            writefile = open(idfile, mode='w+')
-            writefile.write('id="none"\nname="'+clean_title+' [COLOR=yellow](Partially installed)[/COLOR]"\nversion="none"')
+        mybackuppath = xbmc.translatePath(os.path.join(USB,'Community Builds','My Builds'))
+        if not os.path.exists(mybackuppath):
+            os.makedirs(mybackuppath)
+        vq = _get_keyboard( heading="Enter a name for this backup" )
+        if ( not vq ): return False, 0
+        title = urllib.quote_plus(vq)
+        backup_zip = xbmc.translatePath(os.path.join(mybackuppath,title+'.zip'))
+        exclude_dirs_full =  ['plugin.program.community.builds']
+        exclude_files_full = ["xbmc.log","xbmc.old.log","kodi.log","kodi.old.log",'.DS_Store','.setup_complete','XBMCHelper.conf']
+        message_header = "Creating full backup of existing build"
+        message1 = "Archiving..."
+        message2 = ""
+        message3 = "Please Wait"
+        ARCHIVE_CB(HOME, backup_zip, message_header, message1, message2, message3, exclude_dirs_full, exclude_files_full)
+    choice3 = xbmcgui.Dialog().yesno(name, 'Would you like to keep your existing database', 'files or overwrite? Overwriting will wipe any', 'existing music or video library you may have scanned in.', nolabel='Overwrite',yeslabel='Keep Existing')
+    if choice3 == 0: pass
+    elif choice3 == 1:
+        if os.path.exists(tempdbpath):
+            shutil.rmtree(tempdbpath)
+        try:
+            shutil.copytree(DATABASE, tempdbpath, symlinks=False, ignore=shutil.ignore_patterns("Textures13.db","Addons16.db","Addons15.db","saltscache.db-wal","saltscache.db-shm","saltscache.db","onechannelcache.db")) #Create temp folder for databases, give user option to overwrite existing library
+        except:
+            choice4 = xbmcgui.Dialog().yesno(name, 'There was an error trying to backup some databases.', 'Continuing may wipe your existing library. Do you', 'wish to continue?', nolabel='No, cancel',yeslabel='Yes, overwrite')
+            if choice4 == 1: pass
+            if choice4 == 0: exitfunction=1;return
+        backup_zip = xbmc.translatePath(os.path.join(USB,'Database.zip'))
+        ARCHIVE_FILE(tempdbpath,backup_zip)
+    if exitfunction == 1:
+        return
+    else:
+        time.sleep(1)
+        readfile = open(CBADDONPATH, mode='r')
+        default_contents = readfile.read()
+        readfile.close()
+        READ_ZIP(filename)
+        dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Checking ",'', 'Please Wait')
+        dp.update(0,"", "Extracting Zip Please Wait")
+        extract.all(filename,HOME,dp)
+        time.sleep(1)
+        clean_title = ntpath.basename(filename)
+        writefile = open(idfile, mode='w+')
+        writefile.write('id="none"\nname="'+clean_title+' [COLOR=yellow](Partially installed)[/COLOR]"\nversion="none"')
+        writefile.close()
+        cbdefaultpy = open(CBADDONPATH, mode='w+')
+        cbdefaultpy.write(default_contents)
+        cbdefaultpy.close()
+        try:
+            os.rename(GUI,GUIFIX)
+        except:
+            print"NO GUISETTINGS DOWNLOADED"
+        time.sleep(1)
+        localfile = open(GUINEW, mode='r') #Read the original skinsettings tags and store in memory ready to replace in guinew.xml
+        content = file.read(localfile)
+        file.close(localfile)
+        skinsettingsorig = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content)
+        skinorig  = skinsettingsorig[0] if (len(skinsettingsorig) > 0) else ''
+        skindefault = re.compile('<skin default[\s\S]*?<\/skin>').findall(content)
+        skindefaultorig  = skindefault[0] if (len(skindefault) > 0) else ''
+        lookandfeelorig = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content)
+        lookandfeel  = lookandfeelorig[0] if (len(lookandfeelorig) > 0) else ''
+        try:
+            localfile2 = open(GUIFIX, mode='r')
+            content2 = file.read(localfile2)
+            file.close(localfile2)
+            skinsettingscontent = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content2)
+            skinsettingstext  = skinsettingscontent[0] if (len(skinsettingscontent) > 0) else ''
+            skindefaultcontent = re.compile('<skin default[\s\S]*?<\/skin>').findall(content2)
+            skindefaulttext  = skindefaultcontent[0] if (len(skindefaultcontent) > 0) else ''
+            lookandfeelcontent = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content2)
+            lookandfeeltext  = lookandfeelcontent[0] if (len(lookandfeelcontent) > 0) else ''
+            replacefile = content.replace(skinorig,skinsettingstext).replace(lookandfeel,lookandfeeltext).replace(skindefaultorig,skindefaulttext)
+            writefile = open(GUINEW, mode='w+')
+            writefile.write(str(replacefile))
             writefile.close()
-            cbdefaultpy = open(CBADDONPATH, mode='w+')
-            cbdefaultpy.write(default_contents)
-            cbdefaultpy.close()
-            try:
-                os.rename(GUI,GUIFIX)
-            except:
-                print"NO GUISETTINGS DOWNLOADED"
-            time.sleep(1)
-            localfile = open(GUINEW, mode='r') #Read the original skinsettings tags and store in memory ready to replace in guinew.xml
-            content = file.read(localfile)
-            file.close(localfile)
-            skinsettingsorig = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content)
-            skinorig  = skinsettingsorig[0] if (len(skinsettingsorig) > 0) else ''
-            skindefault = re.compile('<skin default[\s\S]*?<\/skin>').findall(content)
-            skindefaultorig  = skindefault[0] if (len(skindefault) > 0) else ''
-            lookandfeelorig = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content)
-            lookandfeel  = lookandfeelorig[0] if (len(lookandfeelorig) > 0) else ''
-            try:
-                localfile2 = open(GUIFIX, mode='r')
-                content2 = file.read(localfile2)
-                file.close(localfile2)
-                skinsettingscontent = re.compile('<skinsettings>[\s\S]*?<\/skinsettings>').findall(content2)
-                skinsettingstext  = skinsettingscontent[0] if (len(skinsettingscontent) > 0) else ''
-                skindefaultcontent = re.compile('<skin default[\s\S]*?<\/skin>').findall(content2)
-                skindefaulttext  = skindefaultcontent[0] if (len(skindefaultcontent) > 0) else ''
-                lookandfeelcontent = re.compile('<lookandfeel>[\s\S]*?<\/lookandfeel>').findall(content2)
-                lookandfeeltext  = lookandfeelcontent[0] if (len(lookandfeelcontent) > 0) else ''
-                replacefile = content.replace(skinorig,skinsettingstext).replace(lookandfeel,lookandfeeltext).replace(skindefaultorig,skindefaulttext)
-                writefile = open(GUINEW, mode='w+')
-                writefile.write(str(replacefile))
-                writefile.close()
-            except:
-                print"NO GUISETTINGS DOWNLOADED"
-            if os.path.exists(GUI):
-                os.remove(GUI)
-            os.rename(GUINEW,GUI)
-            try:
-                os.remove(GUIFIX)
-            except:
-                pass
-            if choice3 == 1:
-                extract.all(backup_zip,DATABASE,dp) #This folder first needs zipping up
-                if choice4 !=1:
-                    shutil.rmtree(tempdbpath)
-            #    os.remove(backup_zip)
-            os.makedirs(guitemp)
-            time.sleep(1)
-            xbmc.executebuiltin('UnloadSkin()') 
-            time.sleep(1)
-            xbmc.executebuiltin('ReloadSkin()')
-            time.sleep(1)
-            xbmc.executebuiltin("ActivateWindow(appearancesettings)")
-            while xbmc.executebuiltin("Window.IsActive(appearancesettings)"):
-                xbmc.sleep(500)
-            try: xbmc.executebuiltin("LoadProfile(Master user)")
-            except: pass
-            dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','to this addon and restore the guisettings_fix.zip')        
-            xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+        except:
+            print"NO GUISETTINGS DOWNLOADED"
+        if os.path.exists(GUI):
+            os.remove(GUI)
+        os.rename(GUINEW,GUI)
+        try:
+            os.remove(GUIFIX)
+        except:
+            pass
+        if choice3 == 1:
+            extract.all(backup_zip,DATABASE,dp) #This folder first needs zipping up
+            if choice4 !=1:
+                shutil.rmtree(tempdbpath)
+        #    os.remove(backup_zip)
+        os.makedirs(guitemp)
+        time.sleep(1)
+        xbmc.executebuiltin('UnloadSkin()') 
+        time.sleep(1)
+        xbmc.executebuiltin('ReloadSkin()')
+        time.sleep(1)
+        xbmc.executebuiltin("ActivateWindow(appearancesettings)")
+        while xbmc.executebuiltin("Window.IsActive(appearancesettings)"):
+            xbmc.sleep(500)
+        try: xbmc.executebuiltin("LoadProfile(Master user)")
+        except: pass
+        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Step 1 complete. Now please change the skin to','the one this build was designed for. Once done come back','to this addon and restore the guisettings_fix.zip')        
+        xbmc.executebuiltin("ActivateWindow(appearancesettings)")
 #---------------------------------------------------------------------------------------------------
 #Function to restore a local copy of guisettings_fix
 def RESTORE_LOCAL_GUI():
@@ -823,8 +852,6 @@ def killxbmc():
 def CATEGORIES(localbuildcheck,localversioncheck,id,unlocked):
 #    if os.path.exists(factory):
 #        FACTORY()
-    if reseller=='true':
-        addDir('[COLOR=yellow]Check for new '+resellername+' Builds[/COLOR]','reseller','Search_Private','TRCOMMUNITYHELIXBUILDS.png','','','')        
     if unlocked == 'yes':
         if id != 'None':
             if id != 'Local':
@@ -860,6 +887,7 @@ def ADDITIONAL_TOOLS():
     addDir('Delete Builds From Device','url','remove_build','Delete_Builds.png','','','Delete Build')
     addDir('Wipe My Setup (Fresh Start)','url','wipe_xbmc','Fresh_Start.png','','','Wipe your special XBMC/Kodi directory which will revert back to a vanillla build.')
     addDir('Convert Physical Paths To Special',HOME,'fix_special','Special_Paths.png','','','Convert Physical Paths To Special')
+    addDir('Check my download location','url','check_storage','Check_Download.png','','','Force close kodi, to be used as last resort')
     addDir('Force Close Kodi','url','kill_xbmc','Kill_XBMC.png','','','Force close kodi, to be used as last resort')
 #---------------------------------------------------------------------------------------------------
 # Check local file version name and number against db
@@ -880,38 +908,32 @@ def SHOWINFO(url):
 # Check local file version name and number against db
 def Check_For_Update(localbuildcheck,localversioncheck,id):
     print "Local Version Check: "+localversioncheck
- #   if localbuildcheck == factoryname: pass
-
     BaseURL = 'http://totalxbmc.tv/totalrevolution/Community_Builds/buildupdate.php?id=%s' % (id)
     link = OPEN_URL(BaseURL).replace('\n','').replace('\r','')
     if id != 'None':
         versioncheckmatch = re.compile('version="(.+?)"').findall(link)
         versioncheck  = versioncheckmatch[0] if (len(versioncheckmatch) > 0) else ''
     if  localversioncheck < versioncheck:
-        print "local build: "+str(localbuildcheck)
         print "new version available"
         return True
     else:
         return False
-        print "local build: "+str(localbuildcheck)
-        print "all good in the hood"
 #---------------------------------------------------------------------------------------------------
 #Build the root search menu for installing community builds
 def CB_Root_Menu():
     logged_in = weblogin.doLogin(cookiepath,username,password)
     xbmc_version=xbmc.getInfoLabel("System.BuildVersion")
     version=float(xbmc_version[:4])
+    if reseller=='true':
+        addDir('[COLOR=yellow]Premium '+resellername+' Builds[/COLOR]','genre=','grab_builds_premium','Community_Builds.png','','','')        
     if login == 'true':
         if logged_in == True:
             if privatebuilds=='true':
-                addDir('[COLOR=lime]Show My Private List[/COLOR]','private','Search_Private','TRCOMMUNITYHELIXBUILDS.png','','','')        
-            addDir('Manual Search','url','manual_search','Manual_Search.png','','','')
-            addDir('Search By Genre','url','genres','Search_Genre.png','','','')
-            addDir('Search By Country/Language','url','countries','Search_Country.png','','','')
+                addDir('[COLOR=lime]Show My Private List[/COLOR]','genre=','Search_Private','Private_builds.png','','','')        
             if version < 14:
-                addDir('Show All Gotham Compatible Builds','genre=','grab_builds','TRCOMMUNITYGOTHAMBUILDS.png','','','')
+                addDir('[COLOR=orange]Show All Gotham Compatible Builds[/COLOR]','genre=','grab_builds','TRCOMMUNITYGOTHAMBUILDS.png','','','')
             else:
-                addDir('Show All Helix Compatible Builds','genre=','grab_builds','TRCOMMUNITYHELIXBUILDS.png','','','')
+                addDir('[COLOR=orange]Show All Helix Compatible Builds[/COLOR]','genre=','grab_builds','TRCOMMUNITYHELIXBUILDS.png','','','')
             addDir('Restore a locally stored Community Build','url','restore_local_CB','Restore.png','','','Back Up Your Full System')
         elif logged_in == False:
             dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','There is an error with your login information, please check','your username and password, remember this is case','sensitive so use capital letters where needed.')
@@ -919,9 +941,9 @@ def CB_Root_Menu():
     else:
         dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','[COLOR=blue][B]Did you know you\'re missing out of some great features?[/B][/COLOR]','To unlock this content simply register on the forum for [COLOR=yellow]FREE[/COLOR]','at [COLOR=lime]www.totalxbmc.tv[/COLOR] and enter details in the addon settings.')
         if version < 14:
-            addDir('Show All Gotham Compatible Builds','genre=','grab_builds','TRCOMMUNITYGOTHAMBUILDS.png','','','')
+            addDir('[COLOR=orange]Show All Gotham Compatible Builds[/COLOR]','genre=','grab_builds','TRCOMMUNITYGOTHAMBUILDS.png','','','')
         else:
-            addDir('Show All Helix Compatible Builds','genre=','grab_builds','TRCOMMUNITYHELIXBUILDS.png','','','')       
+            addDir('[COLOR=orange]Show All Helix Compatible Builds[/COLOR]','genre=','grab_builds','TRCOMMUNITYHELIXBUILDS.png','','','')       
         addDir('Restore a locally stored Community Build','url','restore_local_CB','Restore.png','','','Back Up Your Full System')
 #---------------------------------------------------------------------------------------------------
 #Search in description
@@ -956,17 +978,22 @@ def SEARCH_BUILDS():
     # we need to set the title to our query
     title = urllib.quote_plus(vq)
     searchUrl += title
-    print "Searching URL: " + searchUrl 
     grab_builds(searchUrl)
 #---------------------------------------------------------------------------------------------------
 # menu to set the sort type when searching
-def SortBy(url):       
-    urlbase = url
-    addDir2('[COLOR=dodgerblue]Sort by Most Popular[/COLOR]',url+'&sortx=downloadcount&orderx=DESC','grab_builds','Popular.png','','','')
-    addDir2('[COLOR=dodgerblue]Sort by Newest Builds[/COLOR]',url+'&sortx=created&orderx=DESC','grab_builds','Latest.png','','','')
-    addDir2('[COLOR=dodgerblue]Sort by Recently Updated[/COLOR]',url+'&sortx=updated&orderx=DESC','grab_builds','Recently_Updated.png','','','')
-    addDir2('[COLOR=dodgerblue]Sort by A-Z[/COLOR]',url+'&sortx=name&orderx=ASC','grab_builds','AtoZ.png','','','')
-    addDir2('[COLOR=dodgerblue]Sort by Z-A[/COLOR]',url+'&sortx=name&orderx=DESC','grab_builds','ZtoA.png','','','')
+def SortBy(BuildURL,type):
+    if type == 'reseller':
+        redirect = 'grab_builds_premium'
+    if type == 'public':
+        redirect = 'grab_builds'
+    addDir2('[COLOR=yellow]Manual Search[/COLOR]','url','manual_search','Manual_Search.png','','','')
+    addDir2('[COLOR=dodgerblue]Sort by Most Popular[/COLOR]','&sortx=downloadcount&orderx=DESC',redirect,'Popular.png','','','')
+    addDir2('[COLOR=dodgerblue]Sort by Newest Builds[/COLOR]','&sortx=created&orderx=DESC',redirect,'Latest.png','','','')
+    addDir2('[COLOR=dodgerblue]Sort by Recently Updated[/COLOR]','&sortx=updated&orderx=DESC',redirect,'Recently_Updated.png','','','')
+    addDir2('[COLOR=dodgerblue]Sort by A-Z[/COLOR]','&sortx=name&orderx=ASC',redirect,'AtoZ.png','','','')
+    addDir2('[COLOR=dodgerblue]Sort by Z-A[/COLOR]','&sortx=name&orderx=DESC',redirect,'ZtoA.png','','','')
+    addDir2('[COLOR=dodgerblue]Sort by Genre[/COLOR]','url','genres','Search_Genre.png','','','')
+    addDir2('[COLOR=dodgerblue]Sort by Country/Language[/COLOR]','url','countries','Search_Country.png','','','')
 #---------------------------------------------------------------------------------------------------
 #Get keyboard
 def _get_keyboard( default="", heading="", hidden=False ):
@@ -1058,86 +1085,6 @@ def COUNTRIES():
     addDir('USA','&genre=usa','grab_builds','usa.png','','','')
     addDir('Vietnamese','genre=vietnamese','grab_builds','vietnamese.png','','','')
 #---------------------------------------------------------------------------------------------------
-#Build Countries and Genre Menu (Second Filter)    
-def GENRES2(url):       
-    addDir('[COLOR=lime]GENRES[/COLOR]','None','None','genres.png','','','')
-    addDir('Anime',url+',anime','grab_builds2','anime.png','','','')
-    addDir('Audiobooks',url+',audiobooks','grab_builds2','audiobooks.png','','','')
-    addDir('Comedy',url+',comedy','grab_builds2','comedy.png','','','')
-    addDir('Comics',url+',comics','grab_builds2','comics.png','','','')
-    addDir('Documentary',url+',documentary','grab_builds2','documentary.png','','','')
-    addDir('Downloads',url+',downloads','grab_builds2','downloads.png','','','')
-    addDir('Food',url+',food','grab_builds2','food.png','','','')
-    addDir('Gaming',url+',gaming','grab_builds2','gaming.png','','','')
-    addDir('Health',url+',health','grab_builds2','health.png','','','')
-    addDir('How To...',url+',howto','grab_builds2','howto.png','','','')
-    addDir('Kids',url+',kids','grab_builds2','kids.png','','','')
-    addDir('Live TV',url+',livetv','grab_builds2','livetv.png','','','')
-    addDir('Movies',url+',movies','grab_builds2','movies.png','','','')
-    addDir('Music',url+',music','grab_builds2','music.png','','','')
-    addDir('News',url+',news','grab_builds2','news.png','','','')
-    addDir('Photos',url+',photos','grab_builds2','photos.png','','','')
-    addDir('Podcasts',url+',podcasts','grab_builds2','podcasts.png','','','')
-    addDir('Radio',url+',radio','grab_builds2','radio.png','','','')
-    addDir('Religion',url+',religion','grab_builds2','religion.png','','','')
-    addDir('Space',url+',space','grab_builds2','space.png','','','')
-    addDir('Sports',url+',sports','grab_builds2','sports.png','','','')
-    addDir('Technology',url+',tech','grab_builds2','tech.png','','','')
-    addDir('Trailers',url+',trailers','grab_builds2','trailers.png','','','')
-    addDir('TV Shows',url+',tv','grab_builds2','tv.png','','','')
-    addDir('Misc.',url+',other','grab_builds2','other.png','','','')
-    if ADDON.getSetting('adult') == 'true':
-        addDir('XXX','genre2=adult','grab_builds2','adult.png','','','')
-    addDir('[COLOR=lime]COUNTRIES[/COLOR]','None','None','countries.png','','','')
-    addDir('African',url+',african','grab_builds2','african.png','','','')
-    addDir('Arabic',url+',arabic','grab_builds2','arabic.png','','','')
-    addDir('Asian',url+',asian','grab_builds2','asian.png','','','')
-    addDir('Australian',url+',australian','grab_builds2','australian.png','','','')
-    addDir('Austrian',url+',austrian','grab_builds2','austrian.png','','','')
-    addDir('Belgian',url+',belgian','grab_builds2','belgian.png','','','')
-    addDir('Brazilian',url+',brazilian','grab_builds2','brazilian.png','','','')
-    addDir('Canadian',url+',canadian','grab_builds2','canadian.png','','','')
-    addDir('Columbian',url+',columbian','grab_builds2','columbian.png','','','')
-    addDir('Czech',url+',czech','grab_builds2','czech.png','','','')
-    addDir('Danish',url+',danish','grab_builds2','danish.png','','','')
-    addDir('Dominican',url+',dominican','grab_builds2','dominican.png','','','')
-    addDir('Dutch',url+',dutch','grab_builds2','dutch.png','','','')
-    addDir('Egyptian',url+',egyptian','grab_builds2','egyptian.png','','','')
-    addDir('Filipino',url+',filipino','grab_builds2','filipino.png','','','')
-    addDir('Finnish',url+',finnish','grab_builds2','finnish.png','','','')
-    addDir('French',url+',french','grab_builds2','french.png','','','')
-    addDir('German',url+',german','grab_builds2','german.png','','','')
-    addDir('Greek',url+',greek','grab_builds2','greek.png','','','')
-    addDir('Hebrew',url+',hebrew','grab_builds2','hebrew.png','','','')
-    addDir('Hungarian',url+',hungarian','grab_builds2','hungarian.png','','','')
-    addDir('Icelandic',url+',icelandic','grab_builds2','icelandic.png','','','')
-    addDir('Indian',url+',indian','grab_builds2','indian.png','','','')
-    addDir('Irish',url+',irish','grab_builds2','irish.png','','','')
-    addDir('Italian',url+',italian','grab_builds2','italian.png','','','')
-    addDir('Japanese',url+',japanese','grab_builds2','japanese.png','','','')
-    addDir('Korean',url+',korean','grab_builds2','korean.png','','','')
-    addDir('Lebanese',url+',lebanese','grab_builds2','lebanese.png','','','')
-    addDir('Mongolian',url+',mongolian','grab_builds2','mongolian.png','','','')
-    addDir('Nepali',url+',nepali','grab_builds2','nepali.png','','','')
-    addDir('New Zealand',url+',newzealand','grab_builds2','newzealand.png','','','')
-    addDir('Norwegian',url+',norwegian','grab_builds2','norwegian.png','','','')
-    addDir('Pakistani',url+',pakistani','grab_builds2','pakistani.png','','','')
-    addDir('Polish',url+',polish','grab_builds2','polish.png','','','')
-    addDir('Portuguese',url+',portuguese','grab_builds2','portuguese.png','','','')
-    addDir('Romanian',url+',romanian','grab_builds2','romanian.png','','','')
-    addDir('Russian',url+',russian','grab_builds2','russian.png','','','')
-    addDir('Singapore',url+',singapore','grab_builds2','singapore.png','','','')
-    addDir('Spanish',url+',spanish','grab_builds2','spanish.png','','','')
-    addDir('Swedish',url+',swedish','grab_builds2','swedish.png','','','')
-    addDir('Swiss',url+',swiss','grab_builds2','swiss.png','','','')
-    addDir('Syrian',url+',syrian','grab_builds2','syrian.png','','','')
-    addDir('Tamil',url+',tamil','grab_builds2','tamil.png','','','')
-    addDir('Thai',url+',thai','grab_builds2','thai.png','','','')
-    addDir('Turkish',url+',turkish','grab_builds2','turkish.png','','','')
-    addDir('UK',url+',uk','grab_builds2','uk.png','','','')
-    addDir('USA',url+',usa','grab_builds2','usa.png','','','')
-    addDir('Vietnamese',url+',vietnamese','grab_builds2','vietnamese.png','','','')
-#---------------------------------------------------------------------------------------------------
 #Call the yt module for playing videos. Thanks to spoyser for this module.
 def PLAYVIDEO(url):
     import yt    
@@ -1148,6 +1095,7 @@ def INSTRUCTIONS(url):
     addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] What is Community Builds?','url','instructions_3','How_To.png','','','')
     addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Creating a Community Build','url','instructions_1','How_To.png','','','')
     addDir('[COLOR=dodgerblue][TEXT GUIDE][/COLOR] Installing a Community Build','url','instructions_2','How_To.png','','','')
+    addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] FULL GUIDE - Everything you need to know',"ewuxVfKZ3Fs",'play_video','howto.png','','','')
     addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] IMPORTANT initial settings',"1vXniHsEMEg",'play_video','howto.png','','','')
     addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] Install a Community Build',"kLsVOapuM1A",'play_video','howto.png','','','')
     addDir('[COLOR=lime][VIDEO GUIDE][/COLOR] Fixing a half installed build (guisettings.xml fix)',"X8QYLziFzQU",'play_video','howto.png','','','')
@@ -1194,8 +1142,11 @@ def Instructions_3():
 #---------------------------------------------------------------------------------------------------
 # This creates the final menu showing build details, video and install link
 def COMMUNITY_MENU(url):
-    BaseURL='http://totalxbmc.tv/totalrevolution/Community_Builds/community_builds.php?id=%s' % (url)
+    check1=0
+    BaseURL='http://totalxbmc.tv/totalrevolution/Community_Builds/community_builds_premium.php?id=%s' % (url)
     link = OPEN_URL(BaseURL).replace('\n','').replace('\r','')
+    pathmatch = re.compile('path="(.+?)"').findall(link)
+    artpathmatch = re.compile('myart="(.+?)"').findall(link)
     videopreviewmatch = re.compile('videopreview="(.+?)"').findall(link)
     videoguide1match = re.compile('videoguide1="(.+?)"').findall(link)
     videoguide2match = re.compile('videoguide2="(.+?)"').findall(link)
@@ -1223,6 +1174,8 @@ def COMMUNITY_MENU(url):
     adultmatch = re.compile('adult="(.+?)"').findall(link)
     guisettingsmatch = re.compile('guisettings="(.+?)"').findall(link)
    
+    artpath  = artpathmatch[0] if (len(artpathmatch) > 0) else ''
+    path  = pathmatch[0] if (len(pathmatch) > 0) else ''
     name  = namematch[0] if (len(namematch) > 0) else ''
     author  = authormatch[0] if (len(authormatch) > 0) else ''
     version  = versionmatch[0] if (len(versionmatch) > 0) else ''
@@ -1252,12 +1205,6 @@ def COMMUNITY_MENU(url):
     localfile = open(tempfile, mode='w+')
     localfile.write('id="'+url+'"\nname="'+name+'"\nversion="'+version+'"')
     localfile.close()
-    print"preview: "+videopreview
-    print"guide1: "+videoguide1
-    print"guide2: "+videoguide2
-    print"guide3: "+videoguide3
-    print"guide4: "+videoguide4
-    print"guide5: "+videoguide5
     addDescDir('Full description','None','description','BUILDDETAILS.png',fanart,name,author,version,description,updated,skins,videoaddons,audioaddons,programaddons,pictureaddons,sources,adult)
     if videopreview != 'None':
         addDir('Watch Preview Video',videopreview,'play_video','Video_Preview.png',fanart,'','')
@@ -1272,13 +1219,25 @@ def COMMUNITY_MENU(url):
     if videoguide5 != 'None':
         addDir('(VIDEO) '+videolabel5,videoguide5,'play_video','Video_Guide.png',fanart,'','')    
     if downloadURL=='None':
-        addBuildDir('[COLOR=gold]Sorry this build is currently unavailable[COLOR]','','','','','','','','')
+        addBuildDir('[COLOR=gold]Sorry this build is currently unavailable[/COLOR]','','','','','','','','')
+    if BaseURL.endswith("visibility=reseller"):
+        if (path!='') and (path!='fail') and (os.path.exists(path)):
+            addBuildDir('[COLOR=lime]Install Part 1: Download '+name+'[/COLOR]',downloadURL,'restore_community',iconimage,fanart,artpath,name,defaultskin,guisettingslink)
+        if ((path!='') and not os.path.exists(path) and (path!='fail')):
+            check1=1
+            dialog.ok("Security check failed, contact box seller", 'This box cannot be identified as an official', '[COLOR=lime]'+resellername+'[/COLOR] product.', 'Please contact the seller you purchased this device from for more details.')
+        if path=='fail':
+            check1=1
+            dialog.ok("Subscription not paid", 'The box seller has either opted out of the premium', 'plan or has unpaid debts to the Community Builders.', 'Please contact the seller you purchased this device from for more details.')
+        if path=='':
+            addBuildDir('[COLOR=lime]Install Part 1: Download '+name+'[/COLOR]',downloadURL,'restore_community',iconimage,fanart,path,name,defaultskin,guisettingslink)
     else:
-        addBuildDir('[COLOR=lime]Install 1: Download '+name+'[/COLOR]',downloadURL,'restore_community',iconimage,fanart,'',name,defaultskin,guisettingslink)
-    if guisettingslink=='None':
-        pass
-    else:
-        addDir('[COLOR=dodgerblue]Install 2: Apply guisettings.xml fix[/COLOR]',guisettingslink,'guisettingsfix','FixMy_Build.png',fanart,'','')
+        addBuildDir('[COLOR=lime]Install Part 1: Download '+name+'[/COLOR]',downloadURL,'restore_community',iconimage,fanart,'',name,defaultskin,guisettingslink)
+    if check1==0:
+        if guisettingslink=='None':
+            pass
+        else:
+            addDir('[COLOR=dodgerblue]Install Part 2: Apply guisettings.xml fix[/COLOR]',guisettingslink,'guisettingsfix','FixMy_Build.png',fanart,'','')
 #---------------------------------------------------------------------------------------------------
 #Option to download guisettings fix that merges with existing settings.
 def GUISETTINGS_FIX(url,local):
@@ -1374,33 +1333,33 @@ def GUI_MERGE(url,local):
     except:
         pass
     if success==True:
-		try:
-			localfile = open(tempfile, mode='r')
-			content = file.read(localfile)
-			file.close(localfile)
-			temp = re.compile('id="(.+?)"').findall(content)
-			tempcheck  = temp[0] if (len(temp) > 0) else ''
-			tempname = re.compile('name="(.+?)"').findall(content)
-			namecheck  = tempname[0] if (len(tempname) > 0) else ''
-			tempversion = re.compile('version="(.+?)"').findall(content)
-			versioncheck  = tempversion[0] if (len(tempversion) > 0) else ''
-			writefile = open(idfile, mode='w+')
-			writefile.write('id="'+str(tempcheck)+'"\nname="'+namecheck+'"\nversion="'+versioncheck+'"')
-			writefile.close()
-			localfile = open(startuppath, mode='r')
-			content = file.read(localfile)
-			file.close(localfile)
-			localversionmatch = re.compile('version="(.+?)"').findall(content)
-			localversioncheck  = localversionmatch[0] if (len(localversionmatch) > 0) else ''
-			replacefile = content.replace(localversioncheck,versioncheck)
-			writefile = open(startuppath, mode='w')
-			writefile.write(str(replacefile))
-			writefile.close()
-			os.remove(tempfile)
-		except:
-			writefile = open(idfile, mode='w+')
-			writefile.write('id="None"\nname="Unknown"\nversion="Unknown"')
-			writefile.close()                
+        try:
+            localfile = open(tempfile, mode='r')
+            content = file.read(localfile)
+            file.close(localfile)
+            temp = re.compile('id="(.+?)"').findall(content)
+            tempcheck  = temp[0] if (len(temp) > 0) else ''
+            tempname = re.compile('name="(.+?)"').findall(content)
+            namecheck  = tempname[0] if (len(tempname) > 0) else ''
+            tempversion = re.compile('version="(.+?)"').findall(content)
+            versioncheck  = tempversion[0] if (len(tempversion) > 0) else ''
+            writefile = open(idfile, mode='w+')
+            writefile.write('id="'+str(tempcheck)+'"\nname="'+namecheck+'"\nversion="'+versioncheck+'"')
+            writefile.close()
+            localfile = open(startuppath, mode='r')
+            content = file.read(localfile)
+            file.close(localfile)
+            localversionmatch = re.compile('version="(.+?)"').findall(content)
+            localversioncheck  = localversionmatch[0] if (len(localversionmatch) > 0) else ''
+            replacefile = content.replace(localversioncheck,versioncheck)
+            writefile = open(startuppath, mode='w')
+            writefile.write(str(replacefile))
+            writefile.close()
+            os.remove(tempfile)
+        except:
+            writefile = open(idfile, mode='w+')
+            writefile.write('id="None"\nname="Unknown"\nversion="Unknown"')
+            writefile.close()                
     if os.path.exists(guitemp+'profiles.xml'):
         os.remove(guitemp+'profiles.xml')
     if keep_profiles==0:
@@ -1424,21 +1383,20 @@ def DESCRIPTION(name,url,buildname,author,version,description,updated,skins,vide
 #Create backup menu
 def BACKUP_OPTION():
 #    dialog.ok("[COLOR=red][B]VERY IMPORTANT![/COLOR][/B]", 'If you plan on creating a backup to share [COLOR=lime]ALWAYS[/COLOR] make', 'sure you\'ve deleted your addon_data folder as uninstalling', 'an addon does not remove personal data such as passwords.')             
-    addDir('[COLOR=lime]Create A Commnity Build[/COLOR]','url','community_backup','Backup.png','','','Back Up Your Full System')
-    addDir('Full Backup','url','backup','Backup.png','','','Back Up Your Full System')
+    addDir('[COLOR=lime]Full Backup[/COLOR]','url','community_backup','Backup.png','','','Back Up Your Full System')
     addDir('Backup Just Your Addons','addons','restore_zip','Backup.png','','','Back Up Your Addons')
     addDir('Backup Just Your Addon UserData','addon_data','restore_zip','Backup.png','','','Back Up Your Addon Userdata')
-    addDir('Backup Guisettings.xml',GUI,'resore_backup','Backup.png','','','Back Up Your guisettings.xml')
+    addDir('Backup Guisettings.xml',GUI,'restore_backup','Backup.png','','','Back Up Your guisettings.xml')
     if os.path.exists(FAVS):
-        addDir('Backup Favourites.xml',FAVS,'resore_backup','Backup.png','','','Back Up Your favourites.xml')
+        addDir('Backup Favourites.xml',FAVS,'restore_backup','Backup.png','','','Back Up Your favourites.xml')
     if os.path.exists(SOURCE):
-        addDir('Backup Source.xml',SOURCE,'resore_backup','Backup.png','','','Back Up Your sources.xml')
+        addDir('Backup Source.xml',SOURCE,'restore_backup','Backup.png','','','Back Up Your sources.xml')
     if os.path.exists(ADVANCED):
-        addDir('Backup Advancedsettings.xml',ADVANCED,'resore_backup','Backup.png','','','Back Up Your advancedsettings.xml')
+        addDir('Backup Advancedsettings.xml',ADVANCED,'restore_backup','Backup.png','','','Back Up Your advancedsettings.xml')
     if os.path.exists(KEYMAPS):
-        addDir('Backup Advancedsettings.xml',KEYMAPS,'resore_backup','Backup.png','','','Back Up Your keyboard.xml')
+        addDir('Backup Advancedsettings.xml',KEYMAPS,'restore_backup','Backup.png','','','Back Up Your keyboard.xml')
     if os.path.exists(RSS):
-        addDir('Backup RssFeeds.xml',RSS,'resore_backup','Backup.png','','','Back Up Your RssFeeds.xml')
+        addDir('Backup RssFeeds.xml',RSS,'restore_backup','Backup.png','','','Back Up Your RssFeeds.xml')
 #---------------------------------------------------------------------------------------------------
 #Create restore menu
 def CHECK_LOCAL_INSTALL():
@@ -1470,9 +1428,8 @@ def LocalGUIDialog():
 #Create restore menu
 def RESTORE_OPTION():
     CHECK_LOCAL_INSTALL()
-    addDir('[COLOR=lime]RESTORE LOCAL COMMUNITY BUILD[/COLOR]','url','restore_local_CB','Restore.png','','','Back Up Your Full System')
-    addDir('Restore Local guisettings fix','url','LocalGUIDialog','Restore.png','','','Back Up Your Full System')
-    addDir('[COLOR=dodgerblue]FULL RESTORE[/COLOR]','url','restore','Restore.png','','','Back Up Your Full System')
+    addDir('[COLOR=lime]RESTORE LOCAL BUILD[/COLOR]','url','restore_local_CB','Restore.png','','','Back Up Your Full System')
+    addDir('[COLOR=dodgerblue]Restore Local guisettings file[/COLOR]','url','LocalGUIDialog','Restore.png','','','Back Up Your Full System')
     
     if os.path.exists(os.path.join(USB,'addons.zip')):   
         addDir('Restore Your Addons','addons','restore_zip','Restore.png','','','Restore Your Addons')
@@ -1574,7 +1531,6 @@ def RESTORE_BACKUP_XML(name,url,description):
             r='<setting type="(.+?)" name="%s.(.+?)">(.+?)</setting>'% skin
             
             match=re.compile(r).findall(a)
-            print match
             for type,string,setting in match:
                 setting=setting.replace('&quot;','') .replace('&amp;','&') 
                 xbmc.executebuiltin("Skin.Set%s(%s,%s)"%(type.title(),string,setting))  
@@ -1607,14 +1563,14 @@ def DeletePackages():
 #Function to delete the userdata/addon_data folder
 def DeleteUserData():
     print '############################################################       DELETING USERDATA             ###############################################################'
-    packages_cache_path = xbmc.translatePath(os.path.join('special://home/userdata/addon_data', ''))
+    addon_data_path = xbmc.translatePath(os.path.join('special://home/userdata/addon_data', ''))
  
-    for root, dirs, files in os.walk(packages_cache_path):
+    for root, dirs, files in os.walk(addon_data_path):
         file_count = 0
         file_count += len(files)
         
     # Count files and give option to delete
-        if file_count > 0:
+        if file_count >= 0:
                         
             for f in files:
                 os.unlink(os.path.join(root, f))
@@ -1630,39 +1586,46 @@ def WipeXBMC():
     else:
         choice = xbmcgui.Dialog().yesno("VERY IMPORTANT", 'This will completely wipe your install.', 'Would you like to create a backup before proceeding?', '', yeslabel='Yes',nolabel='No')
         if choice == 1:
-            BACKUP()
-        choice = xbmcgui.Dialog().yesno("ABSOLUTELY CERTAIN?!!!", 'Are you absolutely certain you want to wipe this install?', '', 'All addons and settings will be completely wiped!', yeslabel='Yes',nolabel='No')
-        if choice == 0:
-            return
-        elif choice == 1:
-            dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Wiping Install",'', 'Please Wait')
-            try:
-                for root, dirs, files in os.walk(HOME,topdown=True):
-                    dirs[:] = [d for d in dirs if d not in EXCLUDES]
-                    for name in files:
-                        try:
-                            os.remove(os.path.join(root,name))
-                            os.rmdir(os.path.join(root,name))
-                        except: pass
-                            
-                    for name in dirs:
-                        try: os.rmdir(os.path.join(root,name)); os.rmdir(root)
-                        except: pass
- #               if not failed:
- #                   print"community.builds.WipeXBMC All user files removed, you now have a clean install"
- #                   dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Wipe Successful, please restart XBMC/Kodi for changes to take effect.','','')
- #               else:
- #                   print"community.builds.WipeXBMC User files partially removed"
- #                   dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Wipe Successful, please restart XBMC/Kodi for changes to take effect.','','')
-            except: pass
-        REMOVE_EMPTY_FOLDERS()
-        REMOVE_EMPTY_FOLDERS()
-        REMOVE_EMPTY_FOLDERS()
-        REMOVE_EMPTY_FOLDERS()
-        REMOVE_EMPTY_FOLDERS()
-        REMOVE_EMPTY_FOLDERS()
-        REMOVE_EMPTY_FOLDERS()
-        dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Wipe Successful, please restart XBMC/Kodi for changes to take effect.','','')
+            mybackuppath = xbmc.translatePath(os.path.join(USB,'Community Builds','My Builds'))
+            if not os.path.exists(mybackuppath):
+                os.makedirs(mybackuppath)
+            vq = _get_keyboard( heading="Enter a name for this backup" )
+            if ( not vq ): return False, 0
+            title = urllib.quote_plus(vq)
+            backup_zip = xbmc.translatePath(os.path.join(mybackuppath,title+'.zip'))
+            exclude_dirs_full =  ['plugin.program.community.builds']
+            exclude_files_full = ["xbmc.log","xbmc.old.log","kodi.log","kodi.old.log",'.DS_Store','.setup_complete','XBMCHelper.conf']
+            message_header = "Creating full backup of existing build"
+            message1 = "Archiving..."
+            message2 = ""
+            message3 = "Please Wait"
+            ARCHIVE_CB(HOME, backup_zip, message_header, message1, message2, message3, exclude_dirs_full, exclude_files_full)
+    choice2 = xbmcgui.Dialog().yesno("ABSOLUTELY CERTAIN?!!!", 'Are you absolutely certain you want to wipe this install?', '', 'All addons and settings will be completely wiped!', yeslabel='Yes',nolabel='No')
+    if choice2 == 0:
+        return
+    elif choice2 == 1:
+        dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Wiping Install",'', 'Please Wait')
+        try:
+            for root, dirs, files in os.walk(HOME,topdown=True):
+                dirs[:] = [d for d in dirs if d not in EXCLUDES]
+                for name in files:
+                    try:
+                        os.remove(os.path.join(root,name))
+                        os.rmdir(os.path.join(root,name))
+                    except: pass
+                        
+                for name in dirs:
+                    try: os.rmdir(os.path.join(root,name)); os.rmdir(root)
+                    except: pass
+        except: pass
+    REMOVE_EMPTY_FOLDERS()
+    REMOVE_EMPTY_FOLDERS()
+    REMOVE_EMPTY_FOLDERS()
+    REMOVE_EMPTY_FOLDERS()
+    REMOVE_EMPTY_FOLDERS()
+    REMOVE_EMPTY_FOLDERS()
+    REMOVE_EMPTY_FOLDERS()
+    dialog.ok('[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]','Wipe Successful, please restart XBMC/Kodi for changes to take effect.','','')
 
 #---------------------------------------------------------------------------------------------------
 #Function to do remove all empty folders after delete       
@@ -1692,7 +1655,7 @@ def WipeInstall():
         elif choice == 1:
             dp.create("[COLOR=blue][B]T[/COLOR][COLOR=dodgerblue]R[/COLOR] [COLOR=white]Community Builds[/COLOR][/B]","Wiping Install",'', 'Please Wait')
             addonPath=xbmcaddon.Addon(id=AddonID).getAddonInfo('path'); addonPath=xbmc.translatePath(addonPath); 
-            xbmcPath=os.path.join(addonPath,"..",".."); xbmcPath=os.path.abspath(xbmcPath); plugintools.log("community.builds.WipeXBMC xbmcPath="+xbmcPath); failed=False  
+            xbmcPath=os.path.join(addonPath,"..",".."); xbmcPath=os.path.abspath(xbmcPath); failed=False  
             try:
                 for root, dirs, files in os.walk(xbmcPath,topdown=True):
                     dirs[:] = [d for d in dirs if d not in EXCLUDES]
@@ -1747,7 +1710,7 @@ def addDir(name,url,mode,iconimage = '',fanart = '',video = '',description = '')
     liz.setInfo( type="Video", infoLabels={ "Title": name, "Plot": description } )
     liz.setProperty( "Fanart_Image", fanart )
     liz.setProperty( "Build.Video", video )
-    if (mode==None) or (mode=='Search_Private') or (mode=='additional_tools') or (mode=='search_builds') or (mode=='manual_search') or (mode=='genres2') or (mode=='restore_option') or (mode=='backup_option') or (mode=='cb_root_menu') or (mode=='genres') or (mode=='grab_builds') or (mode=='grab_builds2') or (mode=='community_menu') or (mode=='instructions') or (mode=='countries')or (url==None) or (len(url)<1):
+    if (mode==None) or (mode=='grab_builds_premium') or (mode=='Search_Private') or (mode=='additional_tools') or (mode=='search_builds') or (mode=='manual_search') or (mode=='restore_option') or (mode=='backup_option') or (mode=='cb_root_menu') or (mode=='genres') or (mode=='grab_builds') or (mode=='community_menu') or (mode=='instructions') or (mode=='countries')or (url==None) or (len(url)<1):
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
     else:
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
@@ -1776,7 +1739,7 @@ def addBuildDir(name,url,mode,iconimage,fanart,video,description,skins,guisettin
         liz.setInfo( type="Video", infoLabels={ "Title": name, "Plot": description } )
         liz.setProperty( "Fanart_Image", fanart )
         liz.setProperty( "Build.Video", video )
-        if (mode==None) or (mode=='genres2') or (mode=='restore_option') or (mode=='backup_option') or (mode=='cb_root_menu') or (mode=='genres') or (mode=='grab_builds') or (mode=='grab_builds2') or (mode=='community_menu') or (mode=='instructions') or (mode=='countries')or (url==None) or (len(url)<1):
+        if (mode==None) or (mode=='restore_option') or (mode=='backup_option') or (mode=='cb_root_menu') or (mode=='genres') or (mode=='grab_builds') or (mode=='community_menu') or (mode=='instructions') or (mode=='countries')or (url==None) or (len(url)<1):
             ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
         else:
             ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
@@ -1921,18 +1884,12 @@ if mode==None or url==None or len(url)<1:
         VideoCheck()
 elif mode=='backup_option':
         BACKUP_OPTION()
-elif mode=='restore':
-        print "############   RESTORE  #################"
-        RESTORE()    
 elif mode=='additional_tools':
         print "############   ADDITIONAL TOOLS  #################"
         ADDITIONAL_TOOLS()   
 elif mode=='community_backup':
         print "############   COMMUNITY BACKUP  #################"
         COMMUNITY_BACKUP()
-elif mode=='backup':
-        print "############   BACKUP  #################"
-        BACKUP()
 elif mode=='restore_backup':
         print "############   RESTORE_BACKUP_XML #################"
         RESTORE_BACKUP_XML(name,url,description)
@@ -1944,10 +1901,7 @@ elif mode=='restore_zip':
         RESTORE_ZIP_FILE(url)         
 elif mode=='restore_community':
         print "############   RESTORE_COMMUNITY BUILD  #################"
-        RESTORE_COMMUNITY(name,url,description,skins,guisettingslink)        
-elif mode=='grab_builds2':
-        print "############   CALL COMMUNITY SECTION   #################"
-        COMMUNITY2(url)        
+        RESTORE_COMMUNITY(name,url,video,description,skins,guisettingslink)        
 elif mode=='wipe_xbmc':
         print "############   WIPE XBMC   #################"
         WipeXBMC()
@@ -1990,9 +1944,6 @@ elif mode=='genres':
 elif mode=='countries':
         print "############   Build COUNTRIES Menu   #################"
         COUNTRIES()
-elif mode=='genres2':
-        print "############   Build GENRE2 Menu   #################"
-        GENRES2(url)
 elif mode=='search_builds':
         print "############   MANUAL SEARCH BUILDS   #################"
         SEARCH_BUILDS()
@@ -2000,8 +1951,11 @@ elif mode=='manual_search':
         print "############   MANUAL SEARCH BUILDS   #################"
         MANUAL_SEARCH()
 elif mode=='grab_builds':
-        print "############   MANUAL SEARCH BUILDS   #################"
+        print "############   GRAB PUBLIC BUILDS   #################"
         grab_builds(url)
+elif mode=='grab_builds_premium':
+        print "############   GRAB PREMIUM BUILDS   #################"
+        grab_builds_premium(url)
 elif mode=='guisettingsfix':
         print "############   GUISETTINGS FIX   #################"
         GUISETTINGS_FIX(url,local)
@@ -2035,4 +1989,7 @@ elif mode=='LocalGUIDialog':
 elif mode=='Search_Private':
         print "############   Private search   #################"
         PRIVATE_SEARCH(url)
+elif mode=='check_storage':
+        print "############   Check Storage Location   #################"
+        CheckPath.CheckPath()
 xbmcplugin.endOfDirectory(int(sys.argv[1]))

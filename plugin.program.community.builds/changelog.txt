@@ -1,6 +1,13 @@
 TODO:
-- See if there's a way to not use shutil, maybe there's a way to remove items from a zip rather than pre-archive process?
 - Move temporary id data to the settings.xml so it doesn't disappear when resetting the addon.
+
+1.3.3:
+- Completely changed the backup method so it should now work on all platforms. A full backup will be created and also a universal build.
+- Added the option to create a backup when installing a build, it will ask for a name and save it as that.
+- Removed the option to merge or wipe, it seemed to be confusing people and some devices had issues with wipe. The wipe option is still in additional tools.
+- Opened up all the search criteria to non-registered users.
+- Moved some search items around and fixed some search options, generally made it more user-friendly.
+- Backend work has been done and private builds should be possible very soon. It works in the code, just need to code up a web form.
 
 1.3.2:
 - Added download count to database, can now sort by most popular, alphabetically, latest and recently updated.
